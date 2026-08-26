@@ -1,0 +1,6 @@
+@Sarafan_Core_HostAddress = http://localhost:5080
+
+GET {{Sarafan_Core_HostAddress}}/api/status/status
+Accept: application/json
+
+###

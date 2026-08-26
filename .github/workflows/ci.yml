@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Sarafan.sln
+
+      - name: Verify formatting
+        run: dotnet format Sarafan.sln --no-restore --verify-no-changes
+
+      - name: Build
+        run: dotnet build Sarafan.sln --configuration Release --no-restore
+
+      - name: Build and start container
+        run: docker compose up --detach --build --wait
+
+      - name: Check API
+        run: curl --fail --silent --show-error http://localhost:8080/api/status/status
+
+      - name: Stop container
+        if: always()
+        run: |
+          docker compose logs api
+          docker compose down
