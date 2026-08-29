@@ -318,3 +318,35 @@ docker compose up -d --build --wait
 curl --fail http://localhost:8080/api/status/status
 docker compose down
 ```
+
+## Cloud deployment
+
+The cloud stack contains the UI and Sarafan Core without publishing either
+container directly on the host. Choose exactly one deployment overlay:
+
+- `edge` attaches the UI to the external `sw-consulting-edge` network using the
+  alias `sarafan-ui`;
+- `production` starts a dedicated TLS edge on ports 80 and 443 for
+  `sarafan.sw.consulting`.
+
+```bash
+cp sarafan.env.example sarafan.env
+chmod 600 sarafan.env
+chmod +x scripts/bootstrap-cloud.sh scripts/update-cloud.sh
+
+# Shared server
+scripts/bootstrap-cloud.sh edge
+
+# Dedicated production server
+scripts/bootstrap-cloud.sh production
+```
+
+For a dedicated server, place `s.crt` and `s.key` in
+`/srv/sarafan/certificate` (or set `SARAFAN_CERTIFICATE_DIR`). The certificate
+must cover `sarafan.sw.consulting`. For the shared server, start the
+`sw-consulting-edge` project before Sarafan so the external Docker network
+exists.
+
+Update the selected deployment with `scripts/update-cloud.sh edge` or
+`scripts/update-cloud.sh production`. UI and Core image tags are independent so
+the two repositories do not need synchronized release numbers.

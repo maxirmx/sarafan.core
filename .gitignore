@@ -42,6 +42,7 @@ ScaffoldingReadMe.txt
 
 # dotenv environment variables file
 .env
+sarafan.env
 
 # Others
 ~$*

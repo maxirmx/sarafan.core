@@ -1,0 +1,43 @@
+# Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
+# All rights reserved.
+# This file is a part of the Sarafan application
+
+name: sarafan
+
+services:
+  api:
+    image: ghcr.io/maxirmx/sarafan.core:${SARAFAN_CORE_IMAGE_TAG:-latest}
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/api/status/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      default:
+        aliases:
+          - api
+
+  ui:
+    image: ghcr.io/maxirmx/sarafan.ui:${SARAFAN_UI_IMAGE_TAG:-latest}
+    restart: always
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      default:
+        aliases:
+          - ui
