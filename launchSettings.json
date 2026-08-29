@@ -1,0 +1,27 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeLaunchAction": "LaunchBrowser",
+      "composeLaunchServiceName": "api",
+      "composeLaunchUrl": "{Scheme}://localhost:{ServicePort}/api/status/status",
+      "serviceActions": {
+        "api": "StartDebugging",
+        "db": "StartWithoutDebugging",
+        "adminer": "StartWithoutDebugging",
+        "tests": "DoNotStart"
+      }
+    },
+    "Debug": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "serviceActions": {
+        "api": "StartDebugging",
+        "db": "StartWithoutDebugging",
+        "adminer": "StartWithoutDebugging",
+        "tests": "DoNotStart"
+      }
+    }
+  }
+}

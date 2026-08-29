@@ -297,14 +297,12 @@ ASP.NET Core identity and customer-profile service for Sarafan. It targets .NET 
 ## Local development
 
 ```bash
-cp sarafan.env.example .env
-# Set SARAFAN_POSTGRES_DATA_DIR to an existing durable absolute host path.
 docker compose up -d --wait db adminer
 dotnet restore Sarafan.sln
 dotnet run --project src/Sarafan.Core/Sarafan.Core.csproj
 ```
 
-The development connection uses PostgreSQL on host port `5433`. Data is stored in the configured `SARAFAN_POSTGRES_DATA_DIR` bind mount, not in an anonymous Docker volume. Adminer is available only in the development compose stack at <http://localhost:8088>; use server `db` from inside Compose or `host.docker.internal:5433` when connecting through the browser-hosted Adminer container.
+The development connection uses PostgreSQL on host port `5433`. The machine-specific Compose override stores database data in `R:/Projects/30.Projects/sarafan/.runtime/postgres`. Adminer is available only in the development compose stack at <http://localhost:8088>; use server `db` from inside Compose or `host.docker.internal:5433` when connecting through the browser-hosted Adminer container.
 
 The API status endpoint is <http://localhost:5080/api/status/status> when the development launch profile is used. Registration and login use the fixed verification code `1111` only in Development and Testing; startup rejects that provider in Production.
 
@@ -322,12 +320,12 @@ The API status endpoint is <http://localhost:5080/api/status/status> when the de
 ## Docker
 
 ```bash
-cp sarafan.env.example .env
-# Configure the durable database path before starting Compose.
 docker compose up --build
 ```
 
 The containerized API is available at <http://localhost:8080/api/status/status>, PostgreSQL at `127.0.0.1:5433`, and Adminer at `127.0.0.1:8088` by default.
+
+`Sarafan.sln` also contains a `docker-compose` project for Visual Studio, matching the Docker Compose workflow used by Logibooks Core. Select the **docker-compose** startup project to build and start the development stack; no `.env` file is required for development. The `sarafan.env.example` settings, including the required durable host paths, are used by cloud deployment.
 
 ## Verification
 
@@ -375,3 +373,5 @@ Update the selected deployment with `scripts/update-cloud.sh edge` or
 the two repositories do not need synchronized release numbers.
 
 The production stack starts `ghcr.io/sw-consulting/db-backup:latest`, matching Logibooks' `tooling.db-backup` setup. Configure durable `SARAFAN_BACKUP_DATA_DIR` and `SARAFAN_BACKUP_LOG_DIR` host paths plus the retention period in `sarafan.env`; bootstrap validates all database and backup paths before deployment.
+
+Production migrations run in a dedicated one-shot `migrate` service before the API starts. The long-running API has startup migration disabled. The cloud network assigns the UI proxy a fixed internal address and Core trusts forwarded headers only from that exact proxy; additional deployments can configure exact addresses through `ForwardedHeaders__KnownProxies__N`.

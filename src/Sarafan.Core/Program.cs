@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-using Sarafan.Core;
 using Sarafan.Core.Authentication;
 using Sarafan.Core.Data;
 using Sarafan.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required");
@@ -52,12 +52,33 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.ForwardLimit = 1;
-    options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("10.0.0.0"), 8));
-    options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
-    options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("192.168.0.0"), 16));
+    foreach (var configuredProxy in builder.Configuration
+        .GetSection("ForwardedHeaders:KnownProxies")
+        .Get<string[]>() ?? [])
+    {
+        if (!System.Net.IPAddress.TryParse(configuredProxy, out var address))
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownProxies contains an invalid IP address: {configuredProxy}");
+        }
+
+        options.KnownProxies.Add(address);
+    }
 });
 
 var app = builder.Build();
+
+if (migrateOnly || builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await database.Database.MigrateAsync();
+}
+
+if (migrateOnly)
+{
+    return;
+}
 
 app.UseForwardedHeaders();
 app.UseAuthentication();
@@ -65,21 +86,8 @@ app.UseAuthorization();
 
 app.MapGet("/", () => Results.Redirect("/api/status/status"));
 
-app.MapGet(
-        "/api/status/status",
-        () => Results.Ok(new ServiceStatus("Sarafan.Core", "ok", VersionInfo.AppVersion)))
-    .WithName("GetServiceStatus");
-
 app.MapControllers();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await database.Database.MigrateAsync();
-}
-
 app.Run();
-
-internal sealed record ServiceStatus(string Service, string Status, string AppVersion);
 
 public partial class Program;

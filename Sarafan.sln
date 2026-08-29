@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sarafan.Core", "src\Sarafan
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sarafan.Core.Tests", "tests\Sarafan.Core.Tests\Sarafan.Core.Tests.csproj", "{7F630479-A467-4F61-9E1E-CE1DDA8E7BCD}"
 EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{ABB36590-2AF6-4C87-9032-4367BD89445A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +26,10 @@ Global
 		{7F630479-A467-4F61-9E1E-CE1DDA8E7BCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F630479-A467-4F61-9E1E-CE1DDA8E7BCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F630479-A467-4F61-9E1E-CE1DDA8E7BCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABB36590-2AF6-4C87-9032-4367BD89445A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABB36590-2AF6-4C87-9032-4367BD89445A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABB36590-2AF6-4C87-9032-4367BD89445A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABB36590-2AF6-4C87-9032-4367BD89445A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
