@@ -314,6 +314,8 @@ The containerized API is available at <http://localhost:8080/api/status/status>.
 
 ```bash
 dotnet build Sarafan.sln --configuration Release
+dotnet test Sarafan.sln --configuration Release --collect:"XPlat Code Coverage"
+docker compose --profile test run --rm tests
 docker compose up -d --build --wait
 curl --fail http://localhost:8080/api/status/status
 docker compose down

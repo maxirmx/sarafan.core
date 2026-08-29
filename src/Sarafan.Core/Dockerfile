@@ -23,6 +23,17 @@ RUN dotnet publish "src/Sarafan.Core/Sarafan.Core.csproj" \
     --no-restore \
     /p:UseAppHost=false
 
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS test
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["src/Sarafan.Core/Sarafan.Core.csproj", "src/Sarafan.Core/"]
+COPY ["tests/Sarafan.Core.Tests/Sarafan.Core.Tests.csproj", "tests/Sarafan.Core.Tests/"]
+RUN dotnet restore "tests/Sarafan.Core.Tests/Sarafan.Core.Tests.csproj"
+COPY . .
+RUN dotnet build "tests/Sarafan.Core.Tests/Sarafan.Core.Tests.csproj" \
+    --configuration $BUILD_CONFIGURATION \
+    --no-restore
+
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .

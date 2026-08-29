@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-smoke-test:
+  build-test-and-smoke:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +40,15 @@ jobs:
 
       - name: Build
         run: dotnet build Sarafan.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: >-
+          dotnet test Sarafan.sln
+          --configuration Release
+          --no-build
+          --no-restore
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
 
       - name: Build and start container
         run: docker compose up --detach --build --wait
