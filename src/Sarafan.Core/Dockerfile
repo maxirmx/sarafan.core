@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
 # All rights reserved.
-# This file is a part of Sarafan application
+# This file is a part of the Sarafan application
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER root
