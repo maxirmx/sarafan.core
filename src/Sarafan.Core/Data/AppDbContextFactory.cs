@@ -11,8 +11,10 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Host=localhost;Port=5433;Database=sarafan;Username=postgres;Password=postgres";
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql("Host=localhost;Port=5433;Database=sarafan;Username=postgres;Password=postgres")
+            .UseNpgsql(connectionString)
             .Options;
         return new AppDbContext(options);
     }

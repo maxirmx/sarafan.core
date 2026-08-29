@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting) -->
+<!-- All rights reserved. -->
+<!-- This file is a part of the Sarafan application -->
+<Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup Label="Globals">
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <DockerPublishLocally>False</DockerPublishLocally>
+    <ProjectGuid>abb36590-2af6-4c87-9032-4367bd89445a</ProjectGuid>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.yml" />
+    <None Include="docker-compose-ghrc.yml" />
+    <None Include="docker-compose.edge.yml" />
+    <None Include="docker-compose.production.yml" />
+    <None Include=".dockerignore" />
+    <None Include="sarafan.env.example" />
+  </ItemGroup>
+</Project>

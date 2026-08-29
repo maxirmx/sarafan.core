@@ -4,6 +4,15 @@
 
 name: sarafan
 
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${SARAFAN_POSTGRES_DB:-sarafan};Username=${SARAFAN_POSTGRES_USER:-postgres};Password=${SARAFAN_POSTGRES_PASSWORD:?Set SARAFAN_POSTGRES_PASSWORD}
+  Authentication__SigningKey: ${SARAFAN_JWT_SECRET:?Set SARAFAN_JWT_SECRET}
+  Authentication__AllowFixedCode: "false"
+  Authentication__SecureCookies: "true"
+  Database__ApplyMigrations: "false"
+  ForwardedHeaders__KnownProxies__0: ${SARAFAN_UI_INTERNAL_IP:-172.31.254.10}
+
 services:
   db:
     image: postgres:17
@@ -50,18 +59,22 @@ services:
       db:
         condition: service_healthy
 
-  api:
+  migrate:
     image: ghcr.io/maxirmx/sarafan.core:${SARAFAN_CORE_IMAGE_TAG:-latest}
-    restart: always
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${SARAFAN_POSTGRES_DB:-sarafan};Username=${SARAFAN_POSTGRES_USER:-postgres};Password=${SARAFAN_POSTGRES_PASSWORD:?Set SARAFAN_POSTGRES_PASSWORD}
-      Authentication__SigningKey: ${SARAFAN_JWT_SECRET:?Set SARAFAN_JWT_SECRET}
-      Authentication__AllowFixedCode: "false"
-      Authentication__SecureCookies: "true"
+    restart: "no"
+    environment: *api-environment
+    command: ["dotnet", "Sarafan.Core.dll", "--migrate-only"]
     depends_on:
       db:
         condition: service_healthy
+
+  api:
+    image: ghcr.io/maxirmx/sarafan.core:${SARAFAN_CORE_IMAGE_TAG:-latest}
+    restart: always
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     expose:
       - "8080"
     healthcheck:
@@ -93,3 +106,10 @@ services:
       default:
         aliases:
           - ui
+        ipv4_address: ${SARAFAN_UI_INTERNAL_IP:-172.31.254.10}
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${SARAFAN_INTERNAL_SUBNET:-172.31.254.0/24}
