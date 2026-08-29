@@ -1,3 +1,7 @@
+<!-- Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting) -->
+<!-- All rights reserved. -->
+<!-- This file is a part of Sarafan application -->
+
 # Sarafan Core
 
 > Customer-facing purchasing and parcel-forwarding services with a trusted **Сарафан** brand identity.
