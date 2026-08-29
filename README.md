@@ -281,12 +281,13 @@ The first demo is complete when:
 - What is the approved customer-facing product name?
 
 These decisions should be recorded before Phase 1 finishes so that the demo does not encode temporary assumptions as permanent business rules.
-# Sarafan Core
+
+## Core service
 
 [![ci](https://github.com/maxirmx/sarafan.core/actions/workflows/ci.yml/badge.svg)](https://github.com/maxirmx/sarafan.core/actions/workflows/ci.yml)
 [![publish](https://github.com/maxirmx/sarafan.core/actions/workflows/publish.yml/badge.svg)](https://github.com/maxirmx/sarafan.core/actions/workflows/publish.yml)
 
-Empty ASP.NET Core service for the Sarafan system. The project targets .NET 10 LTS and is packaged as a Linux container.
+ASP.NET Core identity and customer-profile service for Sarafan. It targets .NET 10 LTS, uses PostgreSQL from the first migration, and is packaged as a Linux container.
 
 ## Prerequisites
 
@@ -296,26 +297,46 @@ Empty ASP.NET Core service for the Sarafan system. The project targets .NET 10 L
 ## Local development
 
 ```bash
+cp sarafan.env.example .env
+# Set SARAFAN_POSTGRES_DATA_DIR to an existing durable absolute host path.
+docker compose up -d --wait db adminer
 dotnet restore Sarafan.sln
 dotnet run --project src/Sarafan.Core/Sarafan.Core.csproj
 ```
 
-The status endpoint is available at <http://localhost:5080/api/status/status> when the development launch profile is used.
+The development connection uses PostgreSQL on host port `5433`. Data is stored in the configured `SARAFAN_POSTGRES_DATA_DIR` bind mount, not in an anonymous Docker volume. Adminer is available only in the development compose stack at <http://localhost:8088>; use server `db` from inside Compose or `host.docker.internal:5433` when connecting through the browser-hosted Adminer container.
+
+The API status endpoint is <http://localhost:5080/api/status/status> when the development launch profile is used. Registration and login use the fixed verification code `1111` only in Development and Testing; startup rejects that provider in Production.
+
+### Identity endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/code/request` | Request a registration or login code |
+| `POST` | `/api/auth/code/verify` | Register or log in and issue an access/refresh session |
+| `POST` | `/api/auth/refresh` | Rotate the HttpOnly refresh cookie and issue a new access token |
+| `POST` | `/api/auth/logout` | Revoke the refresh-token family and clear the cookie |
+| `GET`, `PUT` | `/api/customers/me` | Read or update the authenticated customer profile |
+| `GET`, `PUT`, `DELETE` | `/api/customers/me/photo` | Manage a JPEG, PNG, or WebP profile photo up to 5 MiB |
 
 ## Docker
 
 ```bash
+cp sarafan.env.example .env
+# Configure the durable database path before starting Compose.
 docker compose up --build
 ```
 
-The containerized API is available at <http://localhost:8080/api/status/status>.
+The containerized API is available at <http://localhost:8080/api/status/status>, PostgreSQL at `127.0.0.1:5433`, and Adminer at `127.0.0.1:8088` by default.
 
 ## Verification
 
 ```bash
 dotnet build Sarafan.sln --configuration Release
-dotnet test Sarafan.sln --configuration Release --collect:"XPlat Code Coverage"
-docker compose --profile test run --rm tests
+# Start PostgreSQL first; tests create and remove an isolated database.
+SARAFAN_TEST_POSTGRES='Host=127.0.0.1;Port=5433;Database=postgres;Username=postgres;Password=postgres' \
+  dotnet test Sarafan.sln --configuration Release --collect:"XPlat Code Coverage"
+docker compose --profile test run --rm --build tests
 docker compose up -d --build --wait
 curl --fail http://localhost:8080/api/status/status
 docker compose down
@@ -352,3 +373,5 @@ exists.
 Update the selected deployment with `scripts/update-cloud.sh edge` or
 `scripts/update-cloud.sh production`. UI and Core image tags are independent so
 the two repositories do not need synchronized release numbers.
+
+The production stack starts `ghcr.io/sw-consulting/db-backup:latest`, matching Logibooks' `tooling.db-backup` setup. Configure durable `SARAFAN_BACKUP_DATA_DIR` and `SARAFAN_BACKUP_LOG_DIR` host paths plus the retention period in `sarafan.env`; bootstrap validates all database and backup paths before deployment.

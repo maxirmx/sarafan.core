@@ -14,25 +14,22 @@ namespace Sarafan.Core.Tests;
 [TestFixture]
 public sealed class StatusEndpointTests
 {
-    private WebApplicationFactory<Program> _application = null!;
     private HttpClient _client = null!;
 
-    [OneTimeSetUp]
+    [SetUp]
     public void SetUp()
     {
-        _application = new WebApplicationFactory<Program>();
-        _client = _application.CreateClient(
+        _client = IntegrationTestEnvironment.Factory.CreateClient(
             new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false
             });
     }
 
-    [OneTimeTearDown]
+    [TearDown]
     public void TearDown()
     {
         _client.Dispose();
-        _application.Dispose();
     }
 
     [Test]
