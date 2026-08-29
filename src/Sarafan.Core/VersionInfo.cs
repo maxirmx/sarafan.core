@@ -6,5 +6,5 @@ namespace Sarafan.Core;
 
 public static class VersionInfo
 {
-    public const string AppVersion = "0.0.1";
+    public const string AppVersion = "0.0.2";
 }
