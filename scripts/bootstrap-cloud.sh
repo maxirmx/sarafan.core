@@ -19,6 +19,23 @@ set +a
 readonly PROJECT_NAME="${COMPOSE_PROJECT_NAME:-sarafan}"
 readonly CERTIFICATE_DIR="${SARAFAN_CERTIFICATE_DIR:-/srv/sarafan/certificate}"
 
+ensure_durable_directory() {
+  local variable_name="$1"
+  local path="${!variable_name:-}"
+  [[ -n "$path" ]] || fail "$variable_name must be configured"
+  [[ "$path" = /* && "$path" != "/" ]] || fail "$variable_name must be an absolute non-root path"
+  mkdir -p -- "$path"
+  [[ -d "$path" && -w "$path" ]] || fail "$variable_name is not a writable directory: $path"
+}
+
+ensure_durable_directory SARAFAN_POSTGRES_DATA_DIR
+ensure_durable_directory SARAFAN_BACKUP_DATA_DIR
+ensure_durable_directory SARAFAN_BACKUP_LOG_DIR
+[[ -n "${SARAFAN_POSTGRES_PASSWORD:-}" && "${SARAFAN_POSTGRES_PASSWORD}" != "postgres" ]] \
+  || fail "SARAFAN_POSTGRES_PASSWORD must be set to a non-default value"
+readonly JWT_SECRET="${SARAFAN_JWT_SECRET:-}"
+[[ ${#JWT_SECRET} -ge 32 ]] || fail "SARAFAN_JWT_SECRET must contain at least 32 characters"
+
 case "$DEPLOYMENT_TARGET" in
   edge)
     readonly OVERLAY_FILE=docker-compose.edge.yml
@@ -38,7 +55,7 @@ esac
 readonly COMPOSE=(docker compose --project-name "$PROJECT_NAME" --env-file "$ENV_FILE" -f docker-compose-ghrc.yml -f "$OVERLAY_FILE")
 "${COMPOSE[@]}" config --quiet
 "${COMPOSE[@]}" pull
-"${COMPOSE[@]}" up -d api
+"${COMPOSE[@]}" up -d backup api
 "${COMPOSE[@]}" up -d ui
 if [[ "$DEPLOYMENT_TARGET" == production ]]; then
   "${COMPOSE[@]}" up -d production-edge

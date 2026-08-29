@@ -1,0 +1,11 @@
+// Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
+// All rights reserved.
+// This file is a part of the Sarafan application
+
+namespace Sarafan.Core.Services;
+
+public sealed class ServiceException(int statusCode, string code, string message) : Exception(message)
+{
+    public int StatusCode { get; } = statusCode;
+    public string Code { get; } = code;
+}
