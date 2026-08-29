@@ -17,3 +17,5 @@ app.MapGet(
 app.Run();
 
 internal sealed record ServiceStatus(string Service, string Status, string AppVersion);
+
+public partial class Program;
