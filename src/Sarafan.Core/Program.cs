@@ -26,7 +26,7 @@ var authentication = builder.Configuration
     .Get<AuthenticationOptions>()
     ?? throw new InvalidOperationException("Authentication configuration is required");
 
-authentication.Validate(builder.Environment);
+authentication.Validate();
 
 builder.Services
     .AddOptions<AuthenticationOptions>()
@@ -49,7 +49,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<VerificationAttemptStore>();
 builder.Services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
-builder.Services.AddSingleton<IVerificationCodeProvider, FixedVerificationCodeProvider>();
+builder.Services.AddSingleton<IVerificationCodeProvider, PhoneSuffixVerificationCodeProvider>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AuthenticationService>();
 

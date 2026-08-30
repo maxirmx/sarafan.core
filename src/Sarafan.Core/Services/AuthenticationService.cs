@@ -36,13 +36,6 @@ public sealed class AuthenticationService(
         CheckAttemptLimit($"request:phone:{phone}", 3);
         CheckAttemptLimit($"request:ip:{remoteAddress}", 20);
 
-        if (!codeProvider.IsAvailable)
-        {
-            throw new ServiceException(
-                StatusCodes.Status503ServiceUnavailable,
-                "verification_unavailable");
-        }
-
         await codeProvider.RequestCodeAsync(phone, cancellationToken);
     }
 

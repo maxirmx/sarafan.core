@@ -8,7 +8,6 @@ x-api-environment: &api-environment
   ASPNETCORE_ENVIRONMENT: Production
   ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${SARAFAN_POSTGRES_DB:-sarafan};Username=${SARAFAN_POSTGRES_USER:-postgres};Password=${SARAFAN_POSTGRES_PASSWORD:?Set SARAFAN_POSTGRES_PASSWORD}
   Authentication__SigningKey: ${SARAFAN_JWT_SECRET:?Set SARAFAN_JWT_SECRET}
-  Authentication__AllowFixedCode: "false"
   Authentication__SecureCookies: "true"
   Database__ApplyMigrations: "false"
   ForwardedHeaders__ForwardLimit: "2"

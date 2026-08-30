@@ -2,34 +2,28 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
-using Microsoft.Extensions.Options;
-
 namespace Sarafan.Core.Authentication;
 
 public interface IVerificationCodeProvider
 {
-    bool IsAvailable { get; }
     Task RequestCodeAsync(string phone, CancellationToken cancellationToken);
     Task<bool> VerifyCodeAsync(string phone, string? code, CancellationToken cancellationToken);
 }
 
-public sealed class FixedVerificationCodeProvider(IOptions<AuthenticationOptions> options) : IVerificationCodeProvider
+public sealed class PhoneSuffixVerificationCodeProvider : IVerificationCodeProvider
 {
-    private readonly AuthenticationOptions _options = options.Value;
-
-    public bool IsAvailable => _options.AllowFixedCode;
-
     public Task RequestCodeAsync(string phone, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return IsAvailable
-            ? Task.CompletedTask
-            : Task.FromException(new InvalidOperationException("No verification-code provider is configured"));
+        return Task.CompletedTask;
     }
 
     public Task<bool> VerifyCodeAsync(string phone, string? code, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(IsAvailable && string.Equals(code?.Trim(), "1111", StringComparison.Ordinal));
+        var expectedCode = phone.Length >= 4 ? phone[^4..] : string.Empty;
+        return Task.FromResult(
+            expectedCode.Length == 4
+            && string.Equals(code?.Trim(), expectedCode, StringComparison.Ordinal));
     }
 }

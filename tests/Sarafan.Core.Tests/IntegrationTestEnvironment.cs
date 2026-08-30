@@ -55,7 +55,6 @@ public sealed class IntegrationTestEnvironment
         SetEnvironment("Authentication__RefreshTokenDays", "30");
         SetEnvironment("Authentication__RefreshCookieName", "sarafan.refresh");
         SetEnvironment("Authentication__SecureCookies", "false");
-        SetEnvironment("Authentication__AllowFixedCode", "true");
         SetEnvironment("Authentication__TermsVersion", "test-terms");
         SetEnvironment("Authentication__PersonalDataVersion", "test-personal-data");
         Factory = new TestWebApplicationFactory();

@@ -64,13 +64,14 @@ The customer:
 3. Enters an SMS verification code.
 4. Receives an authenticated preliminary account.
 
-For this demo, SMS delivery is stubbed and the verification code is always **`1111`**.
+For this demo, no SMS is delivered. The verification code is the last four digits of the
+normalized phone number in every environment, including Production.
 
 Expected behaviour:
 
 - normalize and validate the phone number;
 - apply basic rate limiting even though SMS is stubbed;
-- reject codes other than `1111`;
+- reject codes that do not match the phone number's last four digits;
 - create an authenticated session after successful verification;
 - preserve the customer's draft work between sessions.
 
@@ -203,7 +204,7 @@ Mobile layouts are first-class because product links are likely to be shared fro
 
 - Begin with one deployable application unless existing Logibooks boundaries make a separate service clearly cheaper.
 - Keep domain modules explicit: identity, customer profile, ordering, and operator workflow.
-- Put SMS behind a provider interface; use the fixed-code implementation only in non-production environments.
+- Keep phone verification behind a provider interface; the demo implementation uses the phone number's last four digits in every environment.
 - Treat order status changes as auditable events rather than overwriting status without history.
 - Use role-based access for customers and operators.
 - Encrypt transport and stored sensitive data using the platform's established facilities.
@@ -217,7 +218,7 @@ Durations are indicative and assume that the Logibooks stack and reusable compon
 | Phase | Duration | Deliverable |
 | --- | ---: | --- |
 | 0. Product definition | 2–3 days | Confirm operational fields, first shipping corridor, reusable Logibooks components, wireframes, and status transitions |
-| 1. Walking skeleton | 3–4 days | Application shell, visual identity, phone authentication with code `1111`, sessions, and preliminary profiles |
+| 1. Walking skeleton | 3–4 days | Application shell, visual identity, phone authentication with the number's last four digits, sessions, and preliminary profiles |
 | 2. Customer journey | 5–7 days | Product-link drafts, full registration, review, submission, order list, and order details |
 | 3. Operator demo | 2–3 days | Protected order queue, status updates, comments, and seeded demo orders |
 | 4. Hardening | 2–3 days | End-to-end tests, access-control review, responsive QA, demo deployment, and a repeatable demo script |
@@ -228,8 +229,8 @@ Expected effort for the primitive demo: approximately **2–3 weeks**, depending
 
 The first demo is complete when:
 
-- [ ] A new customer can register with a phone number and code `1111`.
-- [ ] Codes other than `1111` are rejected.
+- [ ] A new customer can register with a phone number and its last four digits as the code.
+- [ ] Codes other than the phone number's last four digits are rejected.
 - [ ] The customer can paste and save a valid product URL.
 - [ ] A saved draft survives logout and a later sign-in.
 - [ ] The customer can enter all required personal and delivery information.
@@ -262,7 +263,7 @@ The first demo is complete when:
 ## Roadmap after the demo
 
 1. Validate the workflow with operators and a small group of customers.
-2. Replace the fixed SMS code with a real provider and abuse controls.
+2. Replace the demo phone-suffix code with a real provider and abuse controls.
 3. Introduce quotations, payment, and assisted-purchase operations.
 4. Add warehouse addresses, incoming parcels, inspection, and storage.
 5. Add consolidation, customs data, shipping selection, and carrier integration.
@@ -304,7 +305,7 @@ dotnet run --project src/Sarafan.Core/Sarafan.Core.csproj
 
 The development connection uses PostgreSQL on host port `5433`. The machine-specific Compose override stores database data in `R:/Projects/30.Projects/sarafan/.runtime/postgres`. Adminer is available only in the development compose stack at <http://localhost:8088>; use server `db` from inside Compose or `host.docker.internal:5433` when connecting through the browser-hosted Adminer container.
 
-The v1 API status endpoint is <http://localhost:5080/api/v1/status/status> when the development launch profile is used. Registration and login use the fixed verification code `1111` only in Development and Testing; startup rejects that provider in Production.
+The v1 API status endpoint is <http://localhost:5080/api/v1/status/status> when the development launch profile is used. Registration and login use the normalized phone number's last four digits as the verification code in Development, Testing, and Production.
 
 ### Identity endpoints
 

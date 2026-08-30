@@ -30,7 +30,6 @@ public sealed class AuthenticationOptions
     public string RefreshCookieName { get; set; } = "sarafan.refresh";
 
     public bool SecureCookies { get; set; } = true;
-    public bool AllowFixedCode { get; set; }
 
     [Required]
     public string TermsVersion { get; set; } = "2026-08-30";
@@ -38,16 +37,11 @@ public sealed class AuthenticationOptions
     [Required]
     public string PersonalDataVersion { get; set; } = "2026-08-30";
 
-    public void Validate(IHostEnvironment environment)
+    public void Validate()
     {
         if (string.IsNullOrWhiteSpace(SigningKey) || SigningKey.Length < 32)
         {
             throw new InvalidOperationException("Authentication:SigningKey must contain at least 32 characters");
-        }
-
-        if (AllowFixedCode && !environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
-        {
-            throw new InvalidOperationException("The fixed verification code provider is allowed only in Development or Testing");
         }
     }
 }

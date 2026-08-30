@@ -239,6 +239,7 @@ public sealed class ProblemDetailsContractTests
     [Test]
     public async Task AuthenticationServiceFailures_UseCatalogProblems()
     {
+        var phone = NextPhone();
         using var invalidPhone = await _client.PostAsync(
             "/api/v1/auth/code/request",
             new StringContent(
@@ -248,7 +249,7 @@ public sealed class ProblemDetailsContractTests
         using var failedLogin = await _client.PostAsync(
             "/api/v1/auth/code/verify",
             new StringContent(
-                $$"""{"phone":"{{NextPhone()}}","purpose":"login","code":"1111"}""",
+                $$"""{"phone":"{{phone}}","purpose":"login","code":"{{VerificationCode(phone)}}"}""",
                 Encoding.UTF8,
                 "application/json"));
         var invalidPhoneProblem = await ReadProblem(invalidPhone);
@@ -653,7 +654,7 @@ public sealed class ProblemDetailsContractTests
         using var verify = await _client.PostAsync(
             "/api/v1/auth/code/verify",
             new StringContent(
-                $$"""{"phone":"{{phone}}","purpose":"register","code":"1111","termsAccepted":true,"personalDataAccepted":true}""",
+                $$"""{"phone":"{{phone}}","purpose":"register","code":"{{VerificationCode(phone)}}","termsAccepted":true,"personalDataAccepted":true}""",
                 Encoding.UTF8,
                 "application/json"));
         Assert.That(verify.StatusCode, Is.EqualTo(HttpStatusCode.OK));
@@ -675,6 +676,8 @@ public sealed class ProblemDetailsContractTests
 
     private static string NextPhone()
         => $"+7999{Interlocked.Increment(ref _phoneSequence):D7}";
+
+    private static string VerificationCode(string phone) => phone[^4..];
 
     private static JsonSerializerOptions JsonOptions() => new(JsonSerializerDefaults.Web);
 
