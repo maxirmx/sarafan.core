@@ -62,7 +62,7 @@ public sealed class CustomerFlowTests
             City = "Москва",
             Address = "ул. Примерная, 1"
         };
-        using var updateRequest = AuthorizedRequest(HttpMethod.Put, "/api/customers/me", session.AccessToken);
+        using var updateRequest = AuthorizedRequest(HttpMethod.Put, "/api/v1/customers/me", session.AccessToken);
         updateRequest.Content = JsonContent.Create(update);
         using var updateResponse = await _client.SendAsync(updateRequest);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CustomerDto>();
@@ -82,13 +82,13 @@ public sealed class CustomerFlowTests
         using var photoContent = new ByteArrayContent(png);
         photoContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         photoForm.Add(photoContent, "file", "avatar.png");
-        using var photoPut = AuthorizedRequest(HttpMethod.Put, "/api/customers/me/photo", session.AccessToken);
+        using var photoPut = AuthorizedRequest(HttpMethod.Put, "/api/v1/customers/me/photo", session.AccessToken);
         photoPut.Content = photoForm;
         using var photoPutResponse = await _client.SendAsync(photoPut);
         Assert.That(photoPutResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
 
         using var restartedClient = IntegrationTestEnvironment.Factory.CreateClient();
-        using var getRequest = AuthorizedRequest(HttpMethod.Get, "/api/customers/me", session.AccessToken);
+        using var getRequest = AuthorizedRequest(HttpMethod.Get, "/api/v1/customers/me", session.AccessToken);
         using var getResponse = await restartedClient.SendAsync(getRequest);
         var persisted = await getResponse.Content.ReadFromJsonAsync<CustomerDto>();
         using (Assert.EnterMultipleScope())
@@ -98,7 +98,7 @@ public sealed class CustomerFlowTests
             Assert.That(persisted?.HasPhoto, Is.True);
         }
 
-        using var photoGet = AuthorizedRequest(HttpMethod.Get, "/api/customers/me/photo", session.AccessToken);
+        using var photoGet = AuthorizedRequest(HttpMethod.Get, "/api/v1/customers/me/photo", session.AccessToken);
         using var photoGetResponse = await restartedClient.SendAsync(photoGet);
         using (Assert.EnterMultipleScope())
         {
@@ -107,7 +107,7 @@ public sealed class CustomerFlowTests
             Assert.That(await photoGetResponse.Content.ReadAsByteArrayAsync(), Is.EqualTo(png));
         }
 
-        using var deleteRequest = AuthorizedRequest(HttpMethod.Delete, "/api/customers/me/photo", session.AccessToken);
+        using var deleteRequest = AuthorizedRequest(HttpMethod.Delete, "/api/v1/customers/me/photo", session.AccessToken);
         using var deleteResponse = await restartedClient.SendAsync(deleteRequest);
         Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
     }
@@ -116,7 +116,7 @@ public sealed class CustomerFlowTests
     public async Task Verification_RejectsWrongCodeAndMissingConsents()
     {
         var phone = NextPhone();
-        using var wrongCode = await _client.PostAsJsonAsync("/api/auth/code/verify", new
+        using var wrongCode = await _client.PostAsJsonAsync("/api/v1/auth/code/verify", new
         {
             phone,
             purpose = "register",
@@ -124,7 +124,7 @@ public sealed class CustomerFlowTests
             termsAccepted = true,
             personalDataAccepted = true
         });
-        using var missingConsents = await _client.PostAsJsonAsync("/api/auth/code/verify", new
+        using var missingConsents = await _client.PostAsJsonAsync("/api/v1/auth/code/verify", new
         {
             phone,
             purpose = "register",
@@ -149,7 +149,7 @@ public sealed class CustomerFlowTests
         {
             for (var attempt = 0; attempt < 4; attempt++)
             {
-                responses.Add(await _client.PostAsJsonAsync("/api/auth/code/request", new
+                responses.Add(await _client.PostAsJsonAsync("/api/v1/auth/code/request", new
                 {
                     phone,
                     purpose = "register"
@@ -175,7 +175,7 @@ public sealed class CustomerFlowTests
     [Test]
     public async Task CustomerProfile_RequiresAuthentication()
     {
-        using var response = await _client.GetAsync("/api/customers/me");
+        using var response = await _client.GetAsync("/api/v1/customers/me");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
@@ -186,7 +186,7 @@ public sealed class CustomerFlowTests
         var (registered, _) = await Register(phone);
         var nationalFormat = $"8{phone[2..]}";
 
-        using var loginResponse = await _client.PostAsJsonAsync("/api/auth/code/verify", new
+        using var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/code/verify", new
         {
             phone = nationalFormat,
             purpose = "login",
@@ -206,13 +206,13 @@ public sealed class CustomerFlowTests
     public async Task Refresh_RotatesAndReuseRevokesFamily()
     {
         var (_, firstCookie) = await Register(NextPhone());
-        using var firstRefresh = RequestWithCookie(HttpMethod.Post, "/api/auth/refresh", firstCookie);
+        using var firstRefresh = RequestWithCookie(HttpMethod.Post, "/api/v1/auth/refresh", firstCookie);
         using var firstRefreshResponse = await _client.SendAsync(firstRefresh);
         var secondCookie = RefreshCookie(firstRefreshResponse);
 
-        using var reuse = RequestWithCookie(HttpMethod.Post, "/api/auth/refresh", firstCookie);
+        using var reuse = RequestWithCookie(HttpMethod.Post, "/api/v1/auth/refresh", firstCookie);
         using var reuseResponse = await _client.SendAsync(reuse);
-        using var revokedFamily = RequestWithCookie(HttpMethod.Post, "/api/auth/refresh", secondCookie);
+        using var revokedFamily = RequestWithCookie(HttpMethod.Post, "/api/v1/auth/refresh", secondCookie);
         using var revokedFamilyResponse = await _client.SendAsync(revokedFamily);
 
         using (Assert.EnterMultipleScope())
@@ -228,9 +228,9 @@ public sealed class CustomerFlowTests
     public async Task Logout_RevokesRefreshFamily()
     {
         var (_, cookie) = await Register(NextPhone());
-        using var logout = RequestWithCookie(HttpMethod.Post, "/api/auth/logout", cookie);
+        using var logout = RequestWithCookie(HttpMethod.Post, "/api/v1/auth/logout", cookie);
         using var logoutResponse = await _client.SendAsync(logout);
-        using var refresh = RequestWithCookie(HttpMethod.Post, "/api/auth/refresh", cookie);
+        using var refresh = RequestWithCookie(HttpMethod.Post, "/api/v1/auth/refresh", cookie);
         using var refreshResponse = await _client.SendAsync(refresh);
 
         using (Assert.EnterMultipleScope())
@@ -248,7 +248,7 @@ public sealed class CustomerFlowTests
         using var content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 });
         content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         form.Add(content, "file", "fake.png");
-        using var request = AuthorizedRequest(HttpMethod.Put, "/api/customers/me/photo", session.AccessToken);
+        using var request = AuthorizedRequest(HttpMethod.Put, "/api/v1/customers/me/photo", session.AccessToken);
         request.Content = form;
         using var response = await _client.SendAsync(request);
 
@@ -257,14 +257,14 @@ public sealed class CustomerFlowTests
 
     private async Task<(AuthenticationSessionDto Session, string Cookie)> Register(string phone)
     {
-        using var codeRequest = await _client.PostAsJsonAsync("/api/auth/code/request", new
+        using var codeRequest = await _client.PostAsJsonAsync("/api/v1/auth/code/request", new
         {
             phone,
             purpose = "register"
         });
         Assert.That(codeRequest.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
-        using var response = await _client.PostAsJsonAsync("/api/auth/code/verify", new
+        using var response = await _client.PostAsJsonAsync("/api/v1/auth/code/verify", new
         {
             phone,
             purpose = "register",
@@ -296,6 +296,7 @@ public sealed class CustomerFlowTests
     {
         var setCookie = response.Headers.GetValues("Set-Cookie")
             .Single(value => value.StartsWith("sarafan.refresh=", StringComparison.Ordinal));
+        Assert.That(setCookie, Does.Contain("path=/api/v1/auth").IgnoreCase);
         return setCookie.Split(';', 2)[0];
     }
 

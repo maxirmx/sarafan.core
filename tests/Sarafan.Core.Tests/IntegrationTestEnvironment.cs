@@ -60,7 +60,7 @@ public sealed class IntegrationTestEnvironment
         SetEnvironment("Authentication__PersonalDataVersion", "test-personal-data");
         Factory = new TestWebApplicationFactory();
         using var client = Factory.CreateClient();
-        using var response = await client.GetAsync("/api/status/status");
+        using var response = await client.GetAsync("/api/v1/status/status");
         response.EnsureSuccessStatusCode();
     }
 

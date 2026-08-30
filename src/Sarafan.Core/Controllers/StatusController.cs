@@ -9,7 +9,7 @@ using Sarafan.Core.RestModels;
 
 namespace Sarafan.Core.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public sealed class StatusController : SarafanControllerBase
 {
     [AllowAnonymous]

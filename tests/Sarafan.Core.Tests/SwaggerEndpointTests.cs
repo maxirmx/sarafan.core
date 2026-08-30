@@ -49,7 +49,7 @@ public sealed class SwaggerEndpointTests
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(root.GetProperty("info").GetProperty("title").GetString(), Is.EqualTo("Sarafan Core Api"));
             Assert.That(root.GetProperty("info").GetProperty("version").GetString(), Is.EqualTo("v1"));
-            Assert.That(root.GetProperty("paths").TryGetProperty("/api/Status/status", out _), Is.True);
+            Assert.That(root.GetProperty("paths").TryGetProperty("/api/v1/Status/status", out _), Is.True);
             Assert.That(bearerScheme.GetProperty("type").GetString(), Is.EqualTo("http"));
             Assert.That(bearerScheme.GetProperty("scheme").GetString(), Is.EqualTo("bearer"));
             Assert.That(root.GetProperty("security")[0].TryGetProperty("Bearer", out _), Is.True);

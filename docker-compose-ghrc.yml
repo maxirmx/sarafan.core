@@ -78,7 +78,7 @@ services:
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/api/status/status"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/api/v1/status/status"]
       interval: 15s
       timeout: 5s
       retries: 5

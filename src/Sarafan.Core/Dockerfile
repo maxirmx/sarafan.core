@@ -38,5 +38,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl --fail --silent http://localhost:8080/api/status/status || exit 1
+    CMD curl --fail --silent http://localhost:8080/api/v1/status/status || exit 1
 ENTRYPOINT ["dotnet", "Sarafan.Core.dll"]
