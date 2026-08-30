@@ -10,6 +10,9 @@
     <ProjectGuid>abb36590-2af6-4c87-9032-4367bd89445a</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="docker-compose.override.yml">
+      <DependentUpon>docker-compose.yml</DependentUpon>
+    </None>
     <None Include="docker-compose.yml" />
     <None Include="docker-compose-ghrc.yml" />
     <None Include="docker-compose.edge.yml" />

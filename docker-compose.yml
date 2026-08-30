@@ -18,7 +18,7 @@ services:
       retries: 5
       start_period: 5s
     volumes:
-     - R:/Projects/30.Projects/sarafan/.runtime/postgres:/var/lib/postgresql/data
+     - pgdata:/var/lib/postgresql/data
 
   adminer:
     image: adminer
@@ -89,3 +89,6 @@ services:
       - "XPlat Code Coverage"
       - --results-directory
       - /test-results
+
+volumes:
+  pgdata:  
