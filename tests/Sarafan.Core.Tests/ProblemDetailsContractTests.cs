@@ -440,7 +440,7 @@ public sealed class ProblemDetailsContractTests
     [TestCase(429, "rate_limited")]
     [TestCase(500, "internal_error")]
     [TestCase(503, "service_unavailable")]
-    [TestCase(418, "bad_request")]
+    [TestCase(418, "internal_error")]
     public void CodeForStatus_ReturnsStableCode(int status, string expected)
         => Assert.That(SarafanProblemDetailsFactory.CodeForStatus(status), Is.EqualTo(expected));
 

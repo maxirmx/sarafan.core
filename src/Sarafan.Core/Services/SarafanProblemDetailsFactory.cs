@@ -199,7 +199,7 @@ public sealed class SarafanProblemDetailsFactory
         StatusCodes.Status429TooManyRequests => "rate_limited",
         StatusCodes.Status503ServiceUnavailable => "service_unavailable",
         >= 500 and < 600 => "internal_error",
-        _ => "bad_request"
+        _ => "internal_error"
     };
 
     private static ObjectResult Result(SarafanProblemDetails details)
