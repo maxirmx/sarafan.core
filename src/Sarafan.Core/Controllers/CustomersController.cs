@@ -115,7 +115,7 @@ public sealed class CustomersController(AppDbContext database, TimeProvider time
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxPhotoSize + 64 * 1024)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> PutPhoto([FromForm] IFormFile file, CancellationToken cancellationToken)
+    public async Task<ActionResult> PutPhoto(IFormFile file, CancellationToken cancellationToken)
     {
         try
         {
