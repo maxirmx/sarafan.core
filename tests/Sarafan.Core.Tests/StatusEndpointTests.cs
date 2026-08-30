@@ -40,14 +40,14 @@ public sealed class StatusEndpointTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
-            Assert.That(response.Headers.Location?.OriginalString, Is.EqualTo("/api/status/status"));
+            Assert.That(response.Headers.Location?.OriginalString, Is.EqualTo("/api/v1/status/status"));
         }
     }
 
     [Test]
     public async Task Status_ReturnsServiceStatus()
     {
-        using var response = await _client.GetAsync("/api/status/status");
+        using var response = await _client.GetAsync("/api/v1/status/status");
         await using var responseStream = await response.Content.ReadAsStreamAsync();
         using var payload = await JsonDocument.ParseAsync(responseStream);
         var root = payload.RootElement;

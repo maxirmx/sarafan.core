@@ -104,7 +104,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Redirect("/api/status/status"));
+app.MapGet("/", () => Results.Redirect("/api/v1/status/status"));
 
 app.MapControllers();
 

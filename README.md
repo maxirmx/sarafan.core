@@ -304,18 +304,18 @@ dotnet run --project src/Sarafan.Core/Sarafan.Core.csproj
 
 The development connection uses PostgreSQL on host port `5433`. The machine-specific Compose override stores database data in `R:/Projects/30.Projects/sarafan/.runtime/postgres`. Adminer is available only in the development compose stack at <http://localhost:8088>; use server `db` from inside Compose or `host.docker.internal:5433` when connecting through the browser-hosted Adminer container.
 
-The API status endpoint is <http://localhost:5080/api/status/status> when the development launch profile is used. Registration and login use the fixed verification code `1111` only in Development and Testing; startup rejects that provider in Production.
+The v1 API status endpoint is <http://localhost:5080/api/v1/status/status> when the development launch profile is used. Registration and login use the fixed verification code `1111` only in Development and Testing; startup rejects that provider in Production.
 
 ### Identity endpoints
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/auth/code/request` | Request a registration or login code |
-| `POST` | `/api/auth/code/verify` | Register or log in and issue an access/refresh session |
-| `POST` | `/api/auth/refresh` | Rotate the HttpOnly refresh cookie and issue a new access token |
-| `POST` | `/api/auth/logout` | Revoke the refresh-token family and clear the cookie |
-| `GET`, `PUT` | `/api/customers/me` | Read or update the authenticated customer profile |
-| `GET`, `PUT`, `DELETE` | `/api/customers/me/photo` | Manage a JPEG, PNG, or WebP profile photo up to 5 MiB |
+| `POST` | `/api/v1/auth/code/request` | Request a registration or login code |
+| `POST` | `/api/v1/auth/code/verify` | Register or log in and issue an access/refresh session |
+| `POST` | `/api/v1/auth/refresh` | Rotate the HttpOnly refresh cookie and issue a new access token |
+| `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family and clear the cookie |
+| `GET`, `PUT` | `/api/v1/customers/me` | Read or update the authenticated customer profile |
+| `GET`, `PUT`, `DELETE` | `/api/v1/customers/me/photo` | Manage a JPEG, PNG, or WebP profile photo up to 5 MiB |
 
 ## Docker
 
@@ -323,7 +323,7 @@ The API status endpoint is <http://localhost:5080/api/status/status> when the de
 docker compose up --build
 ```
 
-The containerized API is available at <http://localhost:8080/api/status/status>, PostgreSQL at `127.0.0.1:5433`, and Adminer at `127.0.0.1:8088` by default.
+The containerized API is available at <http://localhost:8080/api/v1/status/status>, PostgreSQL at `127.0.0.1:5433`, and Adminer at `127.0.0.1:8088` by default.
 
 `Sarafan.sln` also contains a `docker-compose` project for Visual Studio, matching the Docker Compose workflow used by Logibooks Core. Select the **docker-compose** startup project to build and start the development stack; no `.env` file is required for development. The `sarafan.env.example` settings, including the required durable host paths, are used by cloud deployment.
 
@@ -336,7 +336,7 @@ SARAFAN_TEST_POSTGRES='Host=127.0.0.1;Port=5433;Database=postgres;Username=postg
   dotnet test Sarafan.sln --configuration Release --collect:"XPlat Code Coverage"
 docker compose --profile test run --rm --build tests
 docker compose up -d --build --wait
-curl --fail http://localhost:8080/api/status/status
+curl --fail http://localhost:8080/api/v1/status/status
 docker compose down
 ```
 

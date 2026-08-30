@@ -14,7 +14,7 @@ using Sarafan.Core.Services;
 namespace Sarafan.Core.Controllers;
 
 [Authorize]
-[Route("api/customers/me")]
+[Route("api/v1/customers/me")]
 public sealed class CustomersController(AppDbContext database, TimeProvider timeProvider) : SarafanControllerBase
 {
     private const int MaxPhotoSize = 5 * 1024 * 1024;

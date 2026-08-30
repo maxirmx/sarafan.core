@@ -12,7 +12,7 @@ using Sarafan.Core.Services;
 
 namespace Sarafan.Core.Controllers;
 
-[Route("api/auth")]
+[Route("api/v1/auth")]
 public sealed class AuthController(
     AuthenticationService authenticationService,
     IOptions<AuthenticationOptions> options) : SarafanControllerBase
@@ -115,7 +115,7 @@ public sealed class AuthController(
                 HttpOnly = true,
                 Secure = _options.SecureCookies,
                 SameSite = SameSiteMode.Strict,
-                Path = "/api/auth",
+                Path = "/api/v1/auth",
                 MaxAge = TimeSpan.FromDays(_options.RefreshTokenDays),
                 IsEssential = true
             });
@@ -130,7 +130,7 @@ public sealed class AuthController(
                 HttpOnly = true,
                 Secure = _options.SecureCookies,
                 SameSite = SameSiteMode.Strict,
-                Path = "/api/auth",
+                Path = "/api/v1/auth",
                 IsEssential = true
             });
     }
