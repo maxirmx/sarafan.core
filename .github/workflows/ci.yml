@@ -67,6 +67,11 @@ jobs:
           --verbosity normal
           --collect:"XPlat Code Coverage"
 
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Build and start container
         run: |
           mkdir -p "$SARAFAN_POSTGRES_DATA_DIR"

@@ -5,6 +5,7 @@
 using System.Text;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -33,7 +34,18 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddSingleton<SarafanProblemDetailsFactory>();
+builder.Services.AddExceptionHandler<SarafanExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressMapClientErrors = true;
+    options.InvalidModelStateResponseFactory = context => context.HttpContext
+        .RequestServices
+        .GetRequiredService<SarafanProblemDetailsFactory>()
+        .CreateValidationResult(context.HttpContext, context.ModelState);
+});
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<VerificationAttemptStore>();
 builder.Services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
@@ -48,6 +60,7 @@ builder.Services
     {
         options.MapInboundClaims = false;
         options.TokenValidationParameters = JwtTokenService.CreateValidationParameters(authentication, signingKey);
+        options.Events = new SarafanJwtBearerEvents();
     });
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
@@ -85,6 +98,17 @@ if (migrateOnly)
 }
 
 app.UseForwardedHeaders();
+app.UseExceptionHandler();
+app.UseStatusCodePages(async context =>
+{
+    var httpContext = context.HttpContext;
+    var factory = httpContext.RequestServices.GetRequiredService<SarafanProblemDetailsFactory>();
+    await factory.WriteAsync(
+        httpContext,
+        httpContext.Response.StatusCode,
+        SarafanProblemDetailsFactory.CodeForStatus(httpContext.Response.StatusCode),
+        httpContext.RequestAborted);
+});
 app.UseAuthentication();
 app.UseSwagger();
 app.UseSwaggerUI();

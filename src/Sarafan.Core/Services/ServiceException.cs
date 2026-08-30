@@ -4,7 +4,7 @@
 
 namespace Sarafan.Core.Services;
 
-public sealed class ServiceException(int statusCode, string code, string message) : Exception(message)
+public sealed class ServiceException(int statusCode, string code) : Exception(code)
 {
     public int StatusCode { get; } = statusCode;
     public string Code { get; } = code;

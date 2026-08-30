@@ -15,7 +15,8 @@ namespace Sarafan.Core.Controllers;
 [Route("api/v1/auth")]
 public sealed class AuthController(
     AuthenticationService authenticationService,
-    IOptions<AuthenticationOptions> options) : SarafanControllerBase
+    IOptions<AuthenticationOptions> options,
+    SarafanProblemDetailsFactory problemDetailsFactory) : SarafanControllerBase(problemDetailsFactory)
 {
     private readonly AuthenticationOptions _options = options.Value;
 
@@ -26,18 +27,11 @@ public sealed class AuthController(
         RequestCodeRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await authenticationService.RequestCodeAsync(
-                request,
-                RemoteAddress(),
-                cancellationToken);
-            return Accepted(new { message = "If the request is valid, a verification code is available" });
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        await authenticationService.RequestCodeAsync(
+            request,
+            RemoteAddress(),
+            cancellationToken);
+        return Accepted(new { message = "If the request is valid, a verification code is available" });
     }
 
     [AllowAnonymous]
@@ -47,20 +41,13 @@ public sealed class AuthController(
         VerifyCodeRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var session = await authenticationService.VerifyCodeAsync(
-                request,
-                RemoteAddress(),
-                Request.Headers.UserAgent.FirstOrDefault(),
-                cancellationToken);
-            SetRefreshCookie(session.RefreshToken);
-            return Ok(session.Response);
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        var session = await authenticationService.VerifyCodeAsync(
+            request,
+            RemoteAddress(),
+            Request.Headers.UserAgent.FirstOrDefault(),
+            cancellationToken);
+        SetRefreshCookie(session.RefreshToken);
+        return Ok(session.Response);
     }
 
     [AllowAnonymous]
@@ -71,10 +58,7 @@ public sealed class AuthController(
         if (!Request.Cookies.TryGetValue(_options.RefreshCookieName, out var refreshToken)
             || string.IsNullOrWhiteSpace(refreshToken))
         {
-            return ServiceProblem(new ServiceException(
-                StatusCodes.Status401Unauthorized,
-                "invalid_refresh_token",
-                "The session has expired or is no longer valid"));
+            return InvalidRefreshTokenProblem();
         }
 
         try
@@ -87,10 +71,10 @@ public sealed class AuthController(
             SetRefreshCookie(session.RefreshToken);
             return Ok(session.Response);
         }
-        catch (ServiceException exception)
+        catch (ServiceException)
         {
             DeleteRefreshCookie();
-            return ServiceProblem(exception);
+            throw;
         }
     }
 
