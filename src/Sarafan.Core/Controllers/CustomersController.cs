@@ -15,7 +15,10 @@ namespace Sarafan.Core.Controllers;
 
 [Authorize]
 [Route("api/v1/customers/me")]
-public sealed class CustomersController(AppDbContext database, TimeProvider timeProvider) : SarafanControllerBase
+public sealed class CustomersController(
+    AppDbContext database,
+    TimeProvider timeProvider,
+    SarafanProblemDetailsFactory problemDetailsFactory) : SarafanControllerBase(problemDetailsFactory)
 {
     private const int MaxPhotoSize = 5 * 1024 * 1024;
     private static readonly IReadOnlyDictionary<string, Func<ReadOnlyMemory<byte>, bool>> PhotoSignatures =
@@ -34,27 +37,20 @@ public sealed class CustomersController(AppDbContext database, TimeProvider time
     [ProducesResponseType<CustomerDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerDto>> Get(CancellationToken cancellationToken)
     {
-        try
+        var customerId = CurrentCustomerId();
+        var customer = await database.Customers
+            .AsNoTracking()
+            .Include(item => item.Profile)
+            .SingleOrDefaultAsync(item => item.Id == customerId, cancellationToken);
+        if (customer is null)
         {
-            var customerId = CurrentCustomerId();
-            var customer = await database.Customers
-                .AsNoTracking()
-                .Include(item => item.Profile)
-                .SingleOrDefaultAsync(item => item.Id == customerId, cancellationToken);
-            if (customer is null)
-            {
-                return ServiceProblem(CustomerNotFound());
-            }
+            return CustomerNotFoundProblem();
+        }
 
-            var hasPhoto = await database.CustomerPhotos
-                .AsNoTracking()
-                .AnyAsync(item => item.CustomerId == customerId, cancellationToken);
-            return Ok(CustomerDto.From(customer, hasPhoto));
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        var hasPhoto = await database.CustomerPhotos
+            .AsNoTracking()
+            .AnyAsync(item => item.CustomerId == customerId, cancellationToken);
+        return Ok(CustomerDto.From(customer, hasPhoto));
     }
 
     [HttpPut]
@@ -63,52 +59,38 @@ public sealed class CustomersController(AppDbContext database, TimeProvider time
         CustomerProfileUpdateRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var customerId = CurrentCustomerId();
+        var customer = await database.Customers
+            .Include(item => item.Profile)
+            .SingleOrDefaultAsync(item => item.Id == customerId, cancellationToken);
+        if (customer is null)
         {
-            var customerId = CurrentCustomerId();
-            var customer = await database.Customers
-                .Include(item => item.Profile)
-                .SingleOrDefaultAsync(item => item.Id == customerId, cancellationToken);
-            if (customer is null)
-            {
-                return ServiceProblem(CustomerNotFound());
-            }
+            return CustomerNotFoundProblem();
+        }
 
-            Apply(customer.Profile, request);
-            customer.State = IsComplete(customer.Profile)
-                ? CustomerState.Complete
-                : CustomerState.Preliminary;
-            customer.UpdatedAt = timeProvider.GetUtcNow();
-            await database.SaveChangesAsync(cancellationToken);
-            var hasPhoto = await database.CustomerPhotos
-                .AsNoTracking()
-                .AnyAsync(item => item.CustomerId == customerId, cancellationToken);
-            return Ok(CustomerDto.From(customer, hasPhoto));
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        Apply(customer.Profile, request);
+        customer.State = IsComplete(customer.Profile)
+            ? CustomerState.Complete
+            : CustomerState.Preliminary;
+        customer.UpdatedAt = timeProvider.GetUtcNow();
+        await database.SaveChangesAsync(cancellationToken);
+        var hasPhoto = await database.CustomerPhotos
+            .AsNoTracking()
+            .AnyAsync(item => item.CustomerId == customerId, cancellationToken);
+        return Ok(CustomerDto.From(customer, hasPhoto));
     }
 
     [HttpGet("photo")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult> GetPhoto(CancellationToken cancellationToken)
     {
-        try
-        {
-            var customerId = CurrentCustomerId();
-            var photo = await database.CustomerPhotos
-                .AsNoTracking()
-                .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
-            return photo is null
-                ? NotFound()
-                : File(photo.Content, photo.ContentType);
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        var customerId = CurrentCustomerId();
+        var photo = await database.CustomerPhotos
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
+        return photo is null
+            ? PhotoNotFoundProblem()
+            : File(photo.Content, photo.ContentType);
     }
 
     [HttpPut("photo")]
@@ -117,96 +99,73 @@ public sealed class CustomersController(AppDbContext database, TimeProvider time
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> PutPhoto(IFormFile file, CancellationToken cancellationToken)
     {
-        try
+        var customerId = CurrentCustomerId();
+        if (file.Length is <= 0 or > MaxPhotoSize)
         {
-            var customerId = CurrentCustomerId();
-            if (file.Length is <= 0 or > MaxPhotoSize)
-            {
-                return ServiceProblem(new ServiceException(
-                    StatusCodes.Status400BadRequest,
-                    "invalid_photo_size",
-                    "Photo size must be between 1 byte and 5 MiB"));
-            }
-
-            if (!PhotoSignatures.TryGetValue(file.ContentType, out var signatureValidator))
-            {
-                return ServiceProblem(new ServiceException(
-                    StatusCodes.Status400BadRequest,
-                    "invalid_photo_type",
-                    "Photo must be JPEG, PNG, or WebP"));
-            }
-
-            await using var stream = file.OpenReadStream();
-            await using var buffer = new MemoryStream((int)file.Length);
-            await stream.CopyToAsync(buffer, cancellationToken);
-            var content = buffer.ToArray();
-            if (!signatureValidator(content))
-            {
-                return ServiceProblem(new ServiceException(
-                    StatusCodes.Status400BadRequest,
-                    "invalid_photo_content",
-                    "Photo content does not match its media type"));
-            }
-
-            if (!await database.Customers.AnyAsync(item => item.Id == customerId, cancellationToken))
-            {
-                return ServiceProblem(CustomerNotFound());
-            }
-
-            var photo = await database.CustomerPhotos
-                .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
-            if (photo is null)
-            {
-                photo = new CustomerPhoto
-                {
-                    CustomerId = customerId,
-                    FileName = SafeFileName(file.FileName),
-                    ContentType = file.ContentType,
-                    Content = content,
-                    Size = content.Length,
-                    UpdatedAt = timeProvider.GetUtcNow()
-                };
-                database.CustomerPhotos.Add(photo);
-            }
-            else
-            {
-                photo.FileName = SafeFileName(file.FileName);
-                photo.ContentType = file.ContentType;
-                photo.Content = content;
-                photo.Size = content.Length;
-                photo.UpdatedAt = timeProvider.GetUtcNow();
-            }
-
-            await database.SaveChangesAsync(cancellationToken);
-            return NoContent();
+            return InvalidPhotoSizeProblem();
         }
-        catch (ServiceException exception)
+
+        if (!PhotoSignatures.TryGetValue(file.ContentType, out var signatureValidator))
         {
-            return ServiceProblem(exception);
+            return InvalidPhotoTypeProblem();
         }
+
+        await using var stream = file.OpenReadStream();
+        await using var buffer = new MemoryStream((int)file.Length);
+        await stream.CopyToAsync(buffer, cancellationToken);
+        var content = buffer.ToArray();
+        if (!signatureValidator(content))
+        {
+            return InvalidPhotoContentProblem();
+        }
+
+        if (!await database.Customers.AnyAsync(item => item.Id == customerId, cancellationToken))
+        {
+            return CustomerNotFoundProblem();
+        }
+
+        var photo = await database.CustomerPhotos
+            .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
+        if (photo is null)
+        {
+            photo = new CustomerPhoto
+            {
+                CustomerId = customerId,
+                FileName = SafeFileName(file.FileName),
+                ContentType = file.ContentType,
+                Content = content,
+                Size = content.Length,
+                UpdatedAt = timeProvider.GetUtcNow()
+            };
+            database.CustomerPhotos.Add(photo);
+        }
+        else
+        {
+            photo.FileName = SafeFileName(file.FileName);
+            photo.ContentType = file.ContentType;
+            photo.Content = content;
+            photo.Size = content.Length;
+            photo.UpdatedAt = timeProvider.GetUtcNow();
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     [HttpDelete("photo")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> DeletePhoto(CancellationToken cancellationToken)
     {
-        try
+        var customerId = CurrentCustomerId();
+        var photo = await database.CustomerPhotos
+            .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
+        if (photo is not null)
         {
-            var customerId = CurrentCustomerId();
-            var photo = await database.CustomerPhotos
-                .SingleOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
-            if (photo is not null)
-            {
-                database.CustomerPhotos.Remove(photo);
-                await database.SaveChangesAsync(cancellationToken);
-            }
+            database.CustomerPhotos.Remove(photo);
+            await database.SaveChangesAsync(cancellationToken);
+        }
 
-            return NoContent();
-        }
-        catch (ServiceException exception)
-        {
-            return ServiceProblem(exception);
-        }
+        return NoContent();
     }
 
     private static void Apply(CustomerProfile profile, CustomerProfileUpdateRequest request)
@@ -243,8 +202,4 @@ public sealed class CustomersController(AppDbContext database, TimeProvider time
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static ServiceException CustomerNotFound() => new(
-        StatusCodes.Status404NotFound,
-        "customer_not_found",
-        "Customer was not found");
 }

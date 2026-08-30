@@ -60,39 +60,41 @@ public sealed record CustomerProfileDto(
 
 public sealed class CustomerProfileUpdateRequest
 {
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? LastName { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? FirstName { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? Patronymic { get; set; }
 
-    [EmailAddress]
-    [StringLength(254)]
+    [EmailAddress(ErrorMessage = "Укажите корректный адрес электронной почты.")]
+    [StringLength(254, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? Email { get; set; }
 
-    [StringLength(32)]
+    [StringLength(32, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? PassportSeries { get; set; }
 
-    [StringLength(32)]
+    [StringLength(32, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? PassportNumber { get; set; }
 
     public DateOnly? PassportIssueDate { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? PassportIssuedBy { get; set; }
 
-    [RegularExpression("^(?:[0-9]{10}|[0-9]{12})?$", ErrorMessage = "INN must contain 10 or 12 digits")]
+    [RegularExpression(
+        "^(?:[0-9]{10}|[0-9]{12})?$",
+        ErrorMessage = "ИНН должен содержать 10 или 12 цифр.")]
     public string? Inn { get; set; }
 
-    [StringLength(20)]
+    [StringLength(20, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? PostalCode { get; set; }
 
-    [StringLength(150)]
+    [StringLength(150, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? City { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string? Address { get; set; }
 }

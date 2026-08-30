@@ -8,19 +8,19 @@ namespace Sarafan.Core.RestModels;
 
 public class RequestCodeRequest
 {
-    [Required]
-    [StringLength(64)]
+    [Required(ErrorMessage = "Поле обязательно для заполнения.")]
+    [StringLength(64, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string Phone { get; set; } = string.Empty;
 
-    [Required]
-    [RegularExpression("^(register|login)$", ErrorMessage = "Purpose must be register or login")]
+    [Required(ErrorMessage = "Поле обязательно для заполнения.")]
+    [RegularExpression("^(register|login)$", ErrorMessage = "Укажите register или login.")]
     public string Purpose { get; set; } = string.Empty;
 }
 
 public sealed class VerifyCodeRequest : RequestCodeRequest
 {
-    [Required]
-    [StringLength(16)]
+    [Required(ErrorMessage = "Поле обязательно для заполнения.")]
+    [StringLength(16, ErrorMessage = "Длина поля не должна превышать {1} символов.")]
     public string Code { get; set; } = string.Empty;
 
     public bool TermsAccepted { get; set; }

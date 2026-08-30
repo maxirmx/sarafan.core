@@ -40,8 +40,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status503ServiceUnavailable,
-                "verification_unavailable",
-                "Phone verification is temporarily unavailable");
+                "verification_unavailable");
         }
 
         await codeProvider.RequestCodeAsync(phone, cancellationToken);
@@ -62,8 +61,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status401Unauthorized,
-                "invalid_code",
-                "The verification code is invalid or expired");
+                "invalid_code");
         }
 
         return purpose == "register"
@@ -166,8 +164,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status400BadRequest,
-                "consent_required",
-                "Terms and personal-data consent are required");
+                "consent_required");
         }
 
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
@@ -175,8 +172,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status409Conflict,
-                "account_exists",
-                "An account already exists for this phone number");
+                "account_exists");
         }
 
         var now = timeProvider.GetUtcNow();
@@ -219,8 +215,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status409Conflict,
-                "account_exists",
-                "An account already exists for this phone number");
+                "account_exists");
         }
 
         return CreateSession(customer, false, rawRefreshToken);
@@ -239,8 +234,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status401Unauthorized,
-                "login_failed",
-                "The phone number or verification code is invalid");
+                "login_failed");
         }
 
         var now = timeProvider.GetUtcNow();
@@ -303,8 +297,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status400BadRequest,
-                "invalid_phone",
-                "Enter a valid phone number");
+                "invalid_phone");
         }
 
         return normalized;
@@ -317,8 +310,7 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status400BadRequest,
-                "invalid_purpose",
-                "Purpose must be register or login");
+                "invalid_purpose");
         }
 
         return normalized;
@@ -330,15 +322,13 @@ public sealed class AuthenticationService(
         {
             throw new ServiceException(
                 StatusCodes.Status429TooManyRequests,
-                "rate_limited",
-                "Too many attempts. Try again later");
+                "rate_limited");
         }
     }
 
     private static ServiceException InvalidRefreshToken() => new(
         StatusCodes.Status401Unauthorized,
-        "invalid_refresh_token",
-        "The session has expired or is no longer valid");
+        "invalid_refresh_token");
 
     private static string? Limit(string? value, int length)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim()[..Math.Min(value.Trim().Length, length)];

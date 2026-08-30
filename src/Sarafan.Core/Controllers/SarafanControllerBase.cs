@@ -7,24 +7,81 @@ using System.Security.Claims;
 
 using Microsoft.AspNetCore.Mvc;
 
+using Sarafan.Core.RestModels;
 using Sarafan.Core.Services;
 
 namespace Sarafan.Core.Controllers;
 
 [ApiController]
-public abstract class SarafanControllerBase : ControllerBase
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status400BadRequest,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status401Unauthorized,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status403Forbidden,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status404NotFound,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status409Conflict,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status429TooManyRequests,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status500InternalServerError,
+    SarafanProblemDetailsFactory.MediaType)]
+[ProducesResponseType(
+    typeof(SarafanProblemDetails),
+    StatusCodes.Status503ServiceUnavailable,
+    SarafanProblemDetailsFactory.MediaType)]
+public abstract class SarafanControllerBase(SarafanProblemDetailsFactory problemDetailsFactory) : ControllerBase
 {
-    protected ActionResult ServiceProblem(ServiceException exception)
-    {
-        var details = new ProblemDetails
-        {
-            Status = exception.StatusCode,
-            Title = exception.Message,
-            Type = $"https://sarafan.sw.consulting/problems/{exception.Code}"
-        };
-        details.Extensions["code"] = exception.Code;
-        return StatusCode(exception.StatusCode, details);
-    }
+    protected ActionResult InvalidRefreshTokenProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status401Unauthorized,
+            "invalid_refresh_token");
+
+    protected ActionResult CustomerNotFoundProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status404NotFound,
+            "customer_not_found");
+
+    protected ActionResult PhotoNotFoundProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status404NotFound,
+            "photo_not_found");
+
+    protected ActionResult InvalidPhotoSizeProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status400BadRequest,
+            "invalid_photo_size");
+
+    protected ActionResult InvalidPhotoTypeProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status400BadRequest,
+            "invalid_photo_type");
+
+    protected ActionResult InvalidPhotoContentProblem()
+        => problemDetailsFactory.CreateResult(
+            HttpContext,
+            StatusCodes.Status400BadRequest,
+            "invalid_photo_content");
 
     protected int CurrentCustomerId()
     {
@@ -34,8 +91,7 @@ public abstract class SarafanControllerBase : ControllerBase
             ? customerId
             : throw new ServiceException(
                 StatusCodes.Status401Unauthorized,
-                "invalid_access_token",
-                "The access token does not identify a customer");
+                "invalid_access_token");
     }
 
     protected string RemoteAddress()

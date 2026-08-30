@@ -317,6 +317,10 @@ The v1 API status endpoint is <http://localhost:5080/api/v1/status/status> when 
 | `GET`, `PUT` | `/api/v1/customers/me` | Read or update the authenticated customer profile |
 | `GET`, `PUT`, `DELETE` | `/api/v1/customers/me/photo` | Manage a JPEG, PNG, or WebP profile photo up to 5 MiB |
 
+### API error contract (0.0.4)
+
+Version 0.0.4 replaces the demo's ad-hoc error responses with RFC 9457 Problem Details. API errors use `application/problem+json`; `type` is the canonical machine-readable identifier, while `code` remains an explicit compatibility extension. Clients should branch on `type`, display the safe Russian `detail`, and retain the structured `errors` extension for field-level validation. Clients must not make decisions by parsing localized `title` or `detail` text.
+
 ## Docker
 
 ```bash

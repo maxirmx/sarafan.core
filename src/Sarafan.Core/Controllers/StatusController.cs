@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Sarafan.Core.RestModels;
+using Sarafan.Core.Services;
 
 namespace Sarafan.Core.Controllers;
 
 [Route("api/v1/[controller]")]
-public sealed class StatusController : SarafanControllerBase
+public sealed class StatusController(SarafanProblemDetailsFactory problemDetailsFactory)
+    : SarafanControllerBase(problemDetailsFactory)
 {
     [AllowAnonymous]
     [HttpGet("status")]
