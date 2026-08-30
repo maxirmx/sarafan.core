@@ -41,7 +41,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${SARAFAN_POSTGRES_DB:-sarafan};Username=${SARAFAN_POSTGRES_USER:-postgres};Password=${SARAFAN_POSTGRES_PASSWORD:-postgres}
       Authentication__SigningKey: ${SARAFAN_JWT_SECRET:-sarafan-development-signing-key-change-before-deployment}
-      Authentication__AllowFixedCode: "true"
       Authentication__SecureCookies: "false"
     depends_on:
       db:
@@ -91,4 +90,4 @@ services:
       - /test-results
 
 volumes:
-  pgdata:  
+  pgdata:

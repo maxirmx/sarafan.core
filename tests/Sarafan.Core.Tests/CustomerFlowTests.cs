@@ -120,7 +120,7 @@ public sealed class CustomerFlowTests
         {
             phone,
             purpose = "register",
-            code = "2222",
+            code = WrongVerificationCode(phone),
             termsAccepted = true,
             personalDataAccepted = true
         });
@@ -128,7 +128,7 @@ public sealed class CustomerFlowTests
         {
             phone,
             purpose = "register",
-            code = "1111",
+            code = VerificationCode(phone),
             termsAccepted = false,
             personalDataAccepted = true
         });
@@ -190,7 +190,7 @@ public sealed class CustomerFlowTests
         {
             phone = nationalFormat,
             purpose = "login",
-            code = "1111"
+            code = VerificationCode(phone)
         });
         var loggedIn = await loginResponse.Content.ReadFromJsonAsync<AuthenticationSessionDto>();
 
@@ -268,7 +268,7 @@ public sealed class CustomerFlowTests
         {
             phone,
             purpose = "register",
-            code = "1111",
+            code = VerificationCode(phone),
             termsAccepted = true,
             personalDataAccepted = true
         });
@@ -302,4 +302,9 @@ public sealed class CustomerFlowTests
 
     private static string NextPhone()
         => $"+7999{Interlocked.Increment(ref _phoneSequence):D7}";
+
+    private static string VerificationCode(string phone) => phone[^4..];
+
+    private static string WrongVerificationCode(string phone)
+        => VerificationCode(phone) == "0000" ? "0001" : "0000";
 }
