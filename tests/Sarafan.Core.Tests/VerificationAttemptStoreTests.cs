@@ -27,6 +27,27 @@ public sealed class VerificationAttemptStoreTests
         Assert.That(store.TryConsume("after-expiry", 3, window), Is.True);
     }
 
+    [Test]
+    public void TryConsume_EnforcesBucketCapacityUnderConcurrency()
+    {
+        var store = new VerificationAttemptStore(TimeProvider.System);
+        var accepted = 0;
+
+        Parallel.For(
+            0,
+            20_000,
+            new ParallelOptions { MaxDegreeOfParallelism = 32 },
+            index =>
+            {
+                if (store.TryConsume($"phone:{index}", 1, TimeSpan.FromMinutes(15)))
+                {
+                    Interlocked.Increment(ref accepted);
+                }
+            });
+
+        Assert.That(accepted, Is.EqualTo(10_000));
+    }
+
     private sealed class ManualTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;

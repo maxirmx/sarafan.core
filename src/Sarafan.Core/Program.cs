@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
+using Sarafan.Core;
 using Sarafan.Core.Authentication;
 using Sarafan.Core.Data;
 using Sarafan.Core.Services;
@@ -67,22 +68,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.ForwardLimit = 1;
-    foreach (var configuredProxy in builder.Configuration
-        .GetSection("ForwardedHeaders:KnownProxies")
-        .Get<string[]>() ?? [])
-    {
-        if (!System.Net.IPAddress.TryParse(configuredProxy, out var address))
-        {
-            throw new InvalidOperationException(
-                $"ForwardedHeaders:KnownProxies contains an invalid IP address: {configuredProxy}");
-        }
-
-        options.KnownProxies.Add(address);
-    }
-});
+    ForwardedHeadersConfiguration.Configure(options, builder.Configuration));
 
 var app = builder.Build();
 
