@@ -81,10 +81,13 @@ public sealed class ProblemDetailsContractTests
     {
         using var response = await _client.GetAsync("/api/v1/customers/me");
         var problem = await ReadProblem(response);
+        var challenge = response.Headers.WwwAuthenticate.Single();
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+            Assert.That(challenge.Scheme, Is.EqualTo("Bearer"));
+            Assert.That(challenge.Parameter, Is.Null);
             Assert.That(problem.Status, Is.EqualTo(401));
             Assert.That(problem.Code, Is.EqualTo("invalid_access_token"));
             Assert.That(problem.Type, Is.EqualTo(
@@ -93,13 +96,28 @@ public sealed class ProblemDetailsContractTests
     }
 
     [Test]
+    public async Task InvalidAccessToken_ReturnsSafeBearerErrorChallenge()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/customers/me");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "not-a-jwt");
+        using var response = await _client.SendAsync(request);
+        var problem = await ReadProblem(response);
+        var challenge = response.Headers.WwwAuthenticate.Single();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+            Assert.That(challenge.Scheme, Is.EqualTo("Bearer"));
+            Assert.That(challenge.Parameter, Is.EqualTo("error=\"invalid_token\""));
+            Assert.That(problem.Code, Is.EqualTo("invalid_access_token"));
+        }
+    }
+
+    [Test]
     public async Task JwtEvents_ReturnRussianChallengeAndForbiddenProblems()
     {
         var events = new SarafanJwtBearerEvents();
-        var scheme = new AuthenticationScheme(
-            JwtBearerDefaults.AuthenticationScheme,
-            displayName: null,
-            typeof(JwtBearerHandler));
+        var scheme = JwtScheme();
         var options = new JwtBearerOptions();
         var challengeContext = ContextWithFactory("/challenge");
         var forbiddenContext = ContextWithFactory("/forbidden");
@@ -120,11 +138,36 @@ public sealed class ProblemDetailsContractTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(challengeContext.Response.StatusCode, Is.EqualTo(401));
+            Assert.That(challengeContext.Response.Headers.WWWAuthenticate.ToString(), Is.EqualTo("Bearer"));
             Assert.That(challenge.Code, Is.EqualTo("invalid_access_token"));
             Assert.That(forbiddenContext.Response.StatusCode, Is.EqualTo(403));
             Assert.That(forbidden.Code, Is.EqualTo("access_denied"));
             Assert.That(forbiddenContext.Response.Headers.ContentLanguage.ToString(), Is.EqualTo("ru"));
         }
+    }
+
+    [Test]
+    public async Task JwtEvent_InvalidTokenChallenge_PreservesConfiguredRealmWithoutDetails()
+    {
+        var context = ContextWithFactory("/invalid-token");
+        var options = new JwtBearerOptions { Challenge = "Bearer realm=\"sarafan\"" };
+        var challenge = new JwtBearerChallengeContext(
+            context,
+            JwtScheme(),
+            options,
+            new AuthenticationProperties())
+        {
+            AuthenticateFailure = new InvalidOperationException("sensitive validation detail")
+        };
+
+        await new SarafanJwtBearerEvents().Challenge(challenge);
+
+        Assert.That(
+            context.Response.Headers.WWWAuthenticate.ToString(),
+            Is.EqualTo("Bearer realm=\"sarafan\", error=\"invalid_token\""));
+        Assert.That(
+            context.Response.Headers.WWWAuthenticate.ToString(),
+            Does.Not.Contain("sensitive validation detail"));
     }
 
     [Test]
@@ -652,6 +695,11 @@ public sealed class ProblemDetailsContractTests
             .BuildServiceProvider();
         return context;
     }
+
+    private static AuthenticationScheme JwtScheme() => new(
+        JwtBearerDefaults.AuthenticationScheme,
+        displayName: null,
+        typeof(JwtBearerHandler));
 
     private static async Task<string> Body(HttpContext context)
     {

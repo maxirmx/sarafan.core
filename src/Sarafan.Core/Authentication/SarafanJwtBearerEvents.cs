@@ -13,6 +13,14 @@ public sealed class SarafanJwtBearerEvents : JwtBearerEvents
     public override async Task Challenge(JwtBearerChallengeContext context)
     {
         context.HandleResponse();
+        var challenge = context.Options.Challenge;
+        if (context.AuthenticateFailure is not null)
+        {
+            var separator = challenge.Contains(' ') ? ", " : " ";
+            challenge = $"{challenge}{separator}error=\"invalid_token\"";
+        }
+
+        context.HttpContext.Response.Headers.WWWAuthenticate = challenge;
         var factory = context.HttpContext.RequestServices
             .GetRequiredService<SarafanProblemDetailsFactory>();
         await factory.WriteAsync(
