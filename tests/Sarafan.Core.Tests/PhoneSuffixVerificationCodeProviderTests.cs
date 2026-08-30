@@ -38,9 +38,9 @@ public sealed class PhoneSuffixVerificationCodeProviderTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.Throws<OperationCanceledException>(() =>
+            Assert.ThrowsAsync<OperationCanceledException>(() =>
                 _provider.RequestCodeAsync("+79991234567", source.Token));
-            Assert.Throws<OperationCanceledException>(() =>
+            Assert.ThrowsAsync<OperationCanceledException>(() =>
                 _provider.VerifyCodeAsync("+79991234567", "4567", source.Token));
         }
     }
