@@ -15,6 +15,11 @@ x-api-environment: &api-environment
   ForwardedHeaders__KnownNetworks__1: "172.16.0.0/12"
   ForwardedHeaders__KnownNetworks__2: "192.168.0.0/16"
   ForwardedHeaders__KnownNetworks__3: "fc00::/7"
+  OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+  OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+  OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-}
 
 services:
   db:
@@ -94,6 +99,8 @@ services:
   ui:
     image: ghcr.io/maxirmx/sarafan.ui:${SARAFAN_UI_IMAGE_TAG:-latest}
     restart: always
+    environment:
+      SARAFAN_UI_LOGGING_ENABLED: ${SARAFAN_UI_LOGGING_ENABLED:-false}
     depends_on:
       api:
         condition: service_healthy

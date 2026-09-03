@@ -3,7 +3,9 @@
 // This file is a part of the Sarafan application
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging.Abstractions;
 
+using Sarafan.Core.Observability;
 using Sarafan.Core.Services;
 
 namespace Sarafan.Core.Authentication;
@@ -18,6 +20,10 @@ public sealed class SarafanJwtBearerEvents : JwtBearerEvents
         {
             var separator = challenge.Contains(' ') ? ", " : " ";
             challenge = $"{challenge}{separator}error=\"invalid_token\"";
+            var logger = context.HttpContext.RequestServices
+                .GetService<ILogger<SarafanJwtBearerEvents>>()
+                ?? NullLogger<SarafanJwtBearerEvents>.Instance;
+            SarafanEvents.AuthenticationRejected(logger);
         }
 
         context.HttpContext.Response.Headers.WWWAuthenticate = challenge;

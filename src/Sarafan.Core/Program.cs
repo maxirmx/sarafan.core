@@ -14,10 +14,13 @@ using Microsoft.OpenApi;
 using Sarafan.Core;
 using Sarafan.Core.Authentication;
 using Sarafan.Core.Data;
+using Sarafan.Core.Observability;
 using Sarafan.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
+
+SarafanObservability.Configure(builder);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required");
@@ -84,12 +87,23 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     ForwardedHeadersConfiguration.Configure(options, builder.Configuration));
 
 var app = builder.Build();
+var applicationLogger = app.Services.GetRequiredService<ILogger<ApplicationLifecycle>>();
 
 if (migrateOnly || builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
 {
-    await using var scope = app.Services.CreateAsyncScope();
-    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await database.Database.MigrateAsync();
+    SarafanEvents.MigrationStarted(applicationLogger);
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await database.Database.MigrateAsync();
+        SarafanEvents.MigrationCompleted(applicationLogger);
+    }
+    catch (Exception exception)
+    {
+        SarafanEvents.MigrationFailed(applicationLogger, exception);
+        throw;
+    }
 }
 
 if (migrateOnly)
@@ -98,6 +112,7 @@ if (migrateOnly)
 }
 
 app.UseForwardedHeaders();
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages(async context =>
 {
@@ -117,6 +132,12 @@ app.UseAuthorization();
 app.MapGet("/", () => Results.Redirect("/api/v1/status/status"));
 
 app.MapControllers();
+
+app.Lifetime.ApplicationStarted.Register(() => SarafanEvents.ApplicationStarted(
+    applicationLogger,
+    VersionInfo.AppVersion,
+    app.Environment.EnvironmentName));
+app.Lifetime.ApplicationStopped.Register(() => SarafanEvents.ApplicationStopped(applicationLogger));
 
 app.Run();
 
