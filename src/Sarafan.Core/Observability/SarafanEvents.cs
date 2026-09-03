@@ -72,7 +72,7 @@ public static partial class SarafanEvents
             return;
         }
 
-        using var scope = logger.BeginScope(new List<KeyValuePair<string, object?>>
+        using var scope = logger.BeginScope(new KeyValuePair<string, object?>[]
         {
             new("http.request.method", method),
             new("http.route", route),
@@ -102,7 +102,7 @@ public static partial class SarafanEvents
             return;
         }
 
-        using var scope = logger.BeginScope(new List<KeyValuePair<string, object?>>
+        using var scope = logger.BeginScope(new KeyValuePair<string, object?>[]
         {
             new("http.response.status_code", statusCode),
             new("sarafan.problem.type", type),
@@ -178,7 +178,7 @@ public static partial class SarafanEvents
         string problemCode);
 
     private static IDisposable? ErrorTypeScope(ILogger logger, Exception exception)
-        => logger.BeginScope(new List<KeyValuePair<string, object?>>
+        => logger.BeginScope(new KeyValuePair<string, object?>[]
         {
             new("error.type", exception.GetType().FullName ?? exception.GetType().Name)
         });
