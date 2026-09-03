@@ -8,12 +8,15 @@ using System.Text.Json.Serialization;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Logging.Abstractions;
 
+using Sarafan.Core.Observability;
 using Sarafan.Core.RestModels;
 
 namespace Sarafan.Core.Services;
 
-public sealed class SarafanProblemDetailsFactory
+public sealed class SarafanProblemDetailsFactory(
+    ILogger<SarafanProblemDetailsFactory>? logger = null)
 {
     public const string MediaType = "application/problem+json";
     public const string TypeBase = "https://sarafan.sw.consulting/problems/";
@@ -137,19 +140,27 @@ public sealed class SarafanProblemDetailsFactory
             definition = Definitions[code];
         }
 
-        var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+        var traceId = SarafanTraceIdentifiers.GetOrCreate(context);
         context.Response.Headers.ContentLanguage = "ru";
-        return new SarafanProblemDetails
+        var details = new SarafanProblemDetails
         {
             Type = $"{TypeBase}{code.Replace('_', '-')}",
             Title = definition.Title,
             Status = definition.StatusCode,
             Detail = definition.Detail,
-            Instance = $"urn:sarafan:problem:{Uri.EscapeDataString(traceId)}",
+            Instance = $"urn:sarafan:problem:{traceId}",
             Code = code,
             Errors = errors,
             TraceId = traceId
         };
+        SarafanEvents.ProblemEmitted(
+            logger ?? NullLogger<SarafanProblemDetailsFactory>.Instance,
+            details.Status.Value,
+            details.Type,
+            details.Code,
+            details.Instance,
+            traceId);
+        return details;
     }
 
     public ObjectResult CreateResult(HttpContext context, int statusCode, string code)

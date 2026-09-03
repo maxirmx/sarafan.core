@@ -4,6 +4,8 @@
 
 using Microsoft.AspNetCore.Diagnostics;
 
+using Sarafan.Core.Observability;
+
 namespace Sarafan.Core.Services;
 
 public sealed class SarafanExceptionHandler(
@@ -29,13 +31,9 @@ public sealed class SarafanExceptionHandler(
             _ => (StatusCodes.Status500InternalServerError, "internal_error")
         };
 
-        if (exception is ServiceException)
+        if (exception is not ServiceException and not BadHttpRequestException)
         {
-            logger.LogInformation("Request failed with service problem {ProblemCode}", code);
-        }
-        else
-        {
-            logger.LogError(exception, "Request failed with problem {ProblemCode}", code);
+            SarafanEvents.UnhandledException(logger, code, exception);
         }
 
         await problemDetailsFactory.WriteAsync(httpContext, statusCode, code, cancellationToken);
