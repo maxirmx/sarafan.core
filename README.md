@@ -357,6 +357,8 @@ Do not enable both OTLP export and infrastructure collection of stdout into the 
 
 Logs intentionally exclude raw URLs and query strings, HTTP headers and bodies, tokens/cookies/codes, personal data, localized Problem Details text, connection strings, SQL values, and client IP addresses. New events must use the stable catalogue and allowlisted low-cardinality attributes described in `AGENTS.md`.
 
+Framework Warning, Error, and Critical records remain visible as the stable `framework.diagnostic` event. Their category is retained only when it is a safe type-like identifier; message state, attributes, and exception data are discarded before console or OTLP output.
+
 ## Cloud deployment
 
 The cloud stack contains the UI and Sarafan Core without publishing either

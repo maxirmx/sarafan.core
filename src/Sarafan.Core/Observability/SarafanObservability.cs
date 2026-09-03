@@ -24,8 +24,6 @@ public static class SarafanObservability
         Activity.ForceDefaultIdFormat = true;
 
         builder.Logging.ClearProviders();
-        builder.Logging.AddFilter((category, _) =>
-            category?.StartsWith("Sarafan.", StringComparison.Ordinal) == true);
         builder.Logging.AddConsole(options => options.FormatterName = SarafanConsoleFormatter.FormatterName);
         builder.Logging.AddConsoleFormatter<SarafanConsoleFormatter, ConsoleFormatterOptions>();
         builder.Logging.AddOpenTelemetry(options =>

@@ -13,6 +13,18 @@ internal sealed class HumanReadableLogRecordProcessor : BaseProcessor<LogRecord>
     {
         ArgumentNullException.ThrowIfNull(data);
         data.Exception = null;
+        if (!SarafanLogPolicy.IsApplicationCategory(data.CategoryName))
+        {
+            data.CategoryName = SarafanLogPolicy.SafeFrameworkCategory(data.CategoryName);
+            data.EventId = new EventId(0, SarafanLogPolicy.FrameworkEventName);
+            data.Attributes = null;
+            data.FormattedMessage = SarafanLogPolicy.FrameworkMessage(
+                data.LogLevel,
+                data.CategoryName);
+            data.Body = data.FormattedMessage;
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(data.FormattedMessage))
         {
             data.Body = OneLine(data.FormattedMessage);

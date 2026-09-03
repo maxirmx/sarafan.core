@@ -267,6 +267,59 @@ public sealed class ObservabilityTests
     }
 
     [Test]
+    public void ConsoleFormatter_RedactsFrameworkPayloads()
+    {
+        var entry = new LogEntry<string>(
+            LogLevel.Critical,
+            "Microsoft.Hosting.Lifetime",
+            new EventId(42, "HostFailed"),
+            "Customer /private?token=secret",
+            new InvalidOperationException("password=secret"),
+            static (state, _) => state);
+        using var writer = new StringWriter();
+
+        new SarafanConsoleFormatter().Write(in entry, null, writer);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(writer.ToString(), Does.Contain(
+                "FATAL framework.diagnostic Framework critical event emitted by Microsoft.Hosting.Lifetime."));
+            Assert.That(writer.ToString(), Does.Not.Contain("HostFailed"));
+            Assert.That(writer.ToString(), Does.Not.Contain("/private"));
+            Assert.That(writer.ToString(), Does.Not.Contain("secret"));
+        }
+    }
+
+    [Test]
+    public void LogPolicy_AllowsOnlyStableCategoriesAndMessages()
+    {
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(SarafanLogPolicy.IsApplicationCategory("Sarafan.Core.Service"), Is.True);
+            Assert.That(SarafanLogPolicy.IsApplicationCategory("Microsoft.Hosting"), Is.False);
+            Assert.That(SarafanLogPolicy.IsApplicationCategory(null), Is.False);
+            Assert.That(
+                SarafanLogPolicy.SafeFrameworkCategory("Framework.A_B-C+D`1"),
+                Is.EqualTo("Framework.A_B-C+D`1"));
+            Assert.That(
+                SarafanLogPolicy.SafeFrameworkCategory("unsafe/category"),
+                Is.EqualTo(SarafanLogPolicy.UnknownFrameworkCategory));
+            Assert.That(
+                SarafanLogPolicy.SafeFrameworkCategory(null),
+                Is.EqualTo(SarafanLogPolicy.UnknownFrameworkCategory));
+            Assert.That(
+                SarafanLogPolicy.SafeFrameworkCategory(string.Empty),
+                Is.EqualTo(SarafanLogPolicy.UnknownFrameworkCategory));
+            Assert.That(
+                SarafanLogPolicy.SafeFrameworkCategory(new string('A', 161)),
+                Is.EqualTo(SarafanLogPolicy.UnknownFrameworkCategory));
+            Assert.That(
+                SarafanLogPolicy.FrameworkMessage(LogLevel.Information, null),
+                Is.EqualTo("Framework diagnostic event emitted by framework."));
+        }
+    }
+
+    [Test]
     public void HumanReadableOtlpBody_IsSingleLine()
     {
         Assert.That(
@@ -286,8 +339,30 @@ public sealed class ObservabilityTests
                 new InvalidOperationException("secret exporter exception"),
                 "Readable {Value}\nmessage",
                 "formatted");
-        Assert.That(exporter.Bodies, Is.EqualTo(new[] { "Readable formatted message" }));
-        Assert.That(exporter.HasExceptions, Is.EqualTo(new[] { false }));
+        loggerFactory.CreateLogger("Microsoft.EntityFrameworkCore.Database.Command")
+            .LogError(
+                new EventId(2, "CommandFailed"),
+                new InvalidOperationException("password=secret"),
+                "Failed SQL with {Phone}",
+                "+79991234567");
+        loggerFactory.CreateLogger("unsafe\ncategory")
+            .LogWarning("Secret state");
+
+        Assert.That(exporter.Bodies, Is.EqualTo(new[]
+        {
+            "Readable formatted message",
+            "Framework error event emitted by Microsoft.EntityFrameworkCore.Database.Command.",
+            "Framework warning event emitted by framework."
+        }));
+        Assert.That(exporter.HasExceptions, Is.EqualTo(new[] { false, false, false }));
+        Assert.That(exporter.Attributes.Skip(1), Has.All.Null);
+        Assert.That(exporter.EventNames.Skip(1), Is.EqualTo(new[]
+        {
+            SarafanLogPolicy.FrameworkEventName,
+            SarafanLogPolicy.FrameworkEventName
+        }));
+        Assert.That(string.Join(' ', exporter.Bodies), Does.Not.Contain("secret"));
+        Assert.That(string.Join(' ', exporter.Bodies), Does.Not.Contain("+79991234567"));
 
         Assert.Throws<ArgumentNullException>(() =>
             new HumanReadableLogRecordProcessor().OnEnd(null!));
@@ -300,6 +375,12 @@ public sealed class ObservabilityTests
         {
             EnvironmentName = "Testing"
         });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Logging:LogLevel:Default"] = "Warning",
+            ["Logging:LogLevel:Sarafan"] = "Information",
+            ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning"
+        });
         SarafanObservability.Configure(builder);
         using var app = builder.Build();
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
@@ -308,8 +389,14 @@ public sealed class ObservabilityTests
         {
             Assert.That(loggerFactory.CreateLogger("Sarafan.Test").IsEnabled(LogLevel.Information),
                 Is.True);
-            Assert.That(loggerFactory.CreateLogger("Microsoft.Test").IsEnabled(LogLevel.Critical),
+            Assert.That(loggerFactory.CreateLogger("Sarafan.Test").IsEnabled(LogLevel.Debug),
                 Is.False);
+            Assert.That(loggerFactory.CreateLogger("Microsoft.Test").IsEnabled(LogLevel.Information),
+                Is.False);
+            Assert.That(loggerFactory.CreateLogger("Microsoft.Test").IsEnabled(LogLevel.Warning),
+                Is.True);
+            Assert.That(loggerFactory.CreateLogger("Microsoft.AspNetCore.Test").IsEnabled(LogLevel.Warning),
+                Is.True);
         }
     }
 
@@ -345,6 +432,7 @@ public sealed class ObservabilityTests
             ".LogWarning(",
             ".LogError(",
             ".LogCritical(",
+            ".CreateLogger(\"",
             "Console.Write"
         };
         var violations = Directory
@@ -541,12 +629,18 @@ public sealed class ObservabilityTests
 
         public List<bool> HasExceptions { get; } = [];
 
+        public List<IReadOnlyList<KeyValuePair<string, object?>>?> Attributes { get; } = [];
+
+        public List<string?> EventNames { get; } = [];
+
         public override ExportResult Export(in Batch<LogRecord> batch)
         {
             foreach (var record in batch)
             {
                 Bodies.Add(record.Body);
                 HasExceptions.Add(record.Exception is not null);
+                Attributes.Add(record.Attributes);
+                EventNames.Add(record.EventId.Name);
             }
             return ExportResult.Success;
         }

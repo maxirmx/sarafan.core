@@ -21,8 +21,11 @@ public sealed class SarafanConsoleFormatter() : ConsoleFormatter(FormatterName)
     {
         ArgumentNullException.ThrowIfNull(textWriter);
 
-        var message = logEntry.Formatter?.Invoke(logEntry.State, logEntry.Exception)
-            ?? logEntry.State?.ToString();
+        var isApplicationEvent = SarafanLogPolicy.IsApplicationCategory(logEntry.Category);
+        var message = isApplicationEvent
+            ? logEntry.Formatter?.Invoke(logEntry.State, logEntry.Exception)
+                ?? logEntry.State?.ToString()
+            : SarafanLogPolicy.FrameworkMessage(logEntry.LogLevel, logEntry.Category);
         if (string.IsNullOrWhiteSpace(message))
         {
             return;
@@ -36,7 +39,9 @@ public sealed class SarafanConsoleFormatter() : ConsoleFormatter(FormatterName)
             trace.SpanId = activity.SpanId.ToHexString();
         }
 
-        var eventName = logEntry.EventId.Name ?? logEntry.Category;
+        var eventName = isApplicationEvent
+            ? logEntry.EventId.Name ?? logEntry.Category
+            : SarafanLogPolicy.FrameworkEventName;
         var oneLineMessage = message
             .Replace("\r\n", " ")
             .Replace('\r', ' ')

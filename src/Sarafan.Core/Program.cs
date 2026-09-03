@@ -87,9 +87,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     ForwardedHeadersConfiguration.Configure(options, builder.Configuration));
 
 var app = builder.Build();
-var applicationLogger = app.Services
-    .GetRequiredService<ILoggerFactory>()
-    .CreateLogger("Sarafan.Core.Application");
+var applicationLogger = app.Services.GetRequiredService<ILogger<ApplicationLifecycle>>();
 
 if (migrateOnly || builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
 {

@@ -30,13 +30,14 @@ This file is a part of the Sarafan application
 
 ### Observability and Logging
 
-- Emit application logs only through constructor-injected `ILogger<T>` and the source-generated stable event catalogue in `src/Sarafan.Core/Observability/SarafanEvents.cs`; do not add vendor-specific loggers, ad-hoc event identifiers, interpolated log strings, or direct console output.
+- Emit application logs only through constructor-injected `ILogger<T>` (or a typed `ILogger<T>` resolved at the composition root) and the source-generated stable event catalogue in `src/Sarafan.Core/Observability/SarafanEvents.cs`; do not add vendor-specific loggers, string-based logger categories, ad-hoc event identifiers, interpolated log strings, or direct console output.
 - Keep each event's numeric `EventId`, dotted `EventName`, severity, and fixed English human-readable message stable. Treat changes as an operational contract change and cover them with tests.
 - Model records according to the OpenTelemetry Logs Data Model and use OpenTelemetry semantic-convention attribute names when defined. Use `sarafan.*` only for Sarafan-specific concepts.
 - Keep the text console record human-readable and single-line, with an RFC 3339 UTC timestamp, severity, event name, W3C trace/span identifiers when available, and a meaningful message. Structured fields supplement the message and must never replace it with JSON or a code-only body.
 - Propagate W3C Trace Context and correlate RFC 9457 `traceId` with `Activity.TraceId.ToHexString()` (32 lowercase hexadecimal characters). Do not use the complete `Activity.Id` as the public trace identifier.
 - Log HTTP operations by low-cardinality route template, method, status, and duration only. Never log raw paths, query strings, full URLs, request/response bodies, headers, SQL parameters, localized Problem Details text, or serialized problem documents.
 - Use an allowlist for log attributes. Never record credentials, tokens, cookies, verification codes, personal/customer data, free-form input, client IP addresses, exception messages, database connection strings, or other secrets. Unexpected exceptions are owned and recorded once by the centralized exception boundary.
+- Keep framework Warning, Error, and Critical records visible, but pass them through the centralized privacy policy: emit a stable generic event and safe category only, and discard framework message state, attributes, and exceptions before console or OTLP output.
 - Keep OTLP export optional and driven by standard `OTEL_*` configuration. Exporter or collector failure must not affect API behavior, and a deployment must choose either OTLP delivery or stdout collection to avoid duplicate ingestion.
 - Add tests for every new event, severity, semantic attribute, trace-correlation path, redaction boundary, and filtering decision. New features must extend the stable catalogue rather than bypass the observability facility.
 
