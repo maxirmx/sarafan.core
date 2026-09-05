@@ -394,3 +394,11 @@ the two repositories do not need synchronized release numbers.
 The production stack starts `ghcr.io/sw-consulting/db-backup:latest`, matching Logibooks' `tooling.db-backup` setup. Configure durable `SARAFAN_BACKUP_DATA_DIR` and `SARAFAN_BACKUP_LOG_DIR` host paths plus the retention period in `sarafan.env`; bootstrap validates all database and backup paths before deployment.
 
 Production migrations run in a dedicated one-shot `migrate` service before the API starts. The long-running API has startup migration disabled. Core defaults to the framework's restrictive loopback proxy trust; the cloud Compose stack explicitly trusts private Docker network ranges and processes the two proxy hops (`edge` and `ui`) used by both deployment modes. Docker assigns container addresses dynamically, so the stack does not require a custom IPAM subnet. Other deployments must configure `ForwardedHeaders__KnownNetworks__N` or `ForwardedHeaders__KnownProxies__N` for their own trusted proxy boundary.
+
+## Optional pull request template
+
+Use the [traceability template](.github/PULL_REQUEST_TEMPLATE/traceability.md) if helpful, or write your own PR description. It provides prompts for the planning issue, specification version and sections, relevant scenarios and design frames, and verification results.
+
+To select it on GitHub, append `&template=traceability.md` to a PR creation URL that already has query parameters, or `?template=traceability.md` if it has none. You can also copy the template into the description. See [GitHub's query parameter documentation](https://docs.github.com/en/pull-requests/reference/using-query-parameters-to-create-a-pull-request).
+
+The template is opt-in, is not the default PR body, and has no CI enforcement. Applicable issue and repository requirements still apply when using a custom description.
