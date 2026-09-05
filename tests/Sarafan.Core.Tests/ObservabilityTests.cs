@@ -57,7 +57,7 @@ public sealed class ObservabilityTests
             "internal_error",
             $"urn:sarafan:problem:{IncomingTraceId}",
             IncomingTraceId);
-        SarafanEvents.UnhandledException(logger, "internal_error", secretException);
+        SarafanEvents.UnhandledException(logger, secretException);
         SarafanEvents.AuthenticationRejected(logger);
 
         Assert.That(logger.Records.Select(record => record.EventId.Id), Is.EqualTo(new[]
@@ -89,7 +89,7 @@ public sealed class ObservabilityTests
             LogLevel.Error,
             LogLevel.Information,
             LogLevel.Error,
-            LogLevel.Error,
+            LogLevel.Warning,
             LogLevel.Warning
         }));
         Assert.That(logger.Records, Has.All.Property(nameof(CapturedLog.Message)).Not.Empty);
@@ -98,6 +98,8 @@ public sealed class ObservabilityTests
         Assert.That(logger.Records, Has.All.Property(nameof(CapturedLog.Exception)).Null);
         Assert.That(logger.Records.Single(record => record.EventId.Id == 1400).Scope["error.type"],
             Is.EqualTo(typeof(InvalidOperationException).FullName));
+        Assert.That(logger.Records.Single(record => record.EventId.Id == 1400).Message,
+            Is.EqualTo("An unhandled exception reached the centralized exception handler."));
     }
 
     [Test]
@@ -152,9 +154,13 @@ public sealed class ObservabilityTests
             Assert.That(problem.TraceId, Is.EqualTo(activity.TraceId.ToHexString()));
             Assert.That(problem.TraceId, Does.Match("^[0-9a-f]{32}$"));
             Assert.That(problem.Instance, Is.EqualTo($"urn:sarafan:problem:{problem.TraceId}"));
-            Assert.That(logger.Records, Has.Count.EqualTo(1));
-            Assert.That(logger.Records[0].Message, Does.Not.Contain(problem.Title));
-            Assert.That(logger.Records[0].Message, Does.Not.Contain(problem.Detail));
+            Assert.That(logger.Records, Has.Count.EqualTo(3));
+            Assert.That(logger.Records.Select(record => record.EventId.Name), Is.EqualTo(new[]
+            {
+                SarafanEvents.OperationEnteredName, SarafanEvents.ProblemEmittedName, SarafanEvents.OperationExitedName
+            }));
+            Assert.That(string.Join(' ', logger.Records.Select(record => record.Message)), Does.Not.Contain(problem.Title));
+            Assert.That(string.Join(' ', logger.Records.Select(record => record.Message)), Does.Not.Contain(problem.Detail));
         }
     }
 

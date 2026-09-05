@@ -18,6 +18,8 @@ namespace Sarafan.Core.Services;
 public sealed class SarafanProblemDetailsFactory(
     ILogger<SarafanProblemDetailsFactory>? logger = null)
 {
+    private readonly ILogger<SarafanProblemDetailsFactory> _logger = logger ?? NullLogger<SarafanProblemDetailsFactory>.Instance;
+
     public const string MediaType = "application/problem+json";
     public const string TypeBase = "https://sarafan.sw.consulting/problems/";
 
@@ -132,6 +134,16 @@ public sealed class SarafanProblemDetailsFactory(
         int statusCode,
         string code,
         IReadOnlyDictionary<string, string[]>? errors = null)
+        => OperationLogging.Run(_logger, $"{typeof(SarafanProblemDetailsFactory).FullName}.{nameof(Create)}",
+            () => ProblemInputs(statusCode, code), () =>
+            {
+                var details = CreateCore(context, statusCode, code, errors);
+                LogProblemEmitted(details);
+                return details;
+            });
+
+    private SarafanProblemDetails CreateCore(
+        HttpContext context, int statusCode, string code, IReadOnlyDictionary<string, string[]>? errors)
     {
         if (!Definitions.TryGetValue(code, out var definition)
             || definition.StatusCode != statusCode)
@@ -153,20 +165,18 @@ public sealed class SarafanProblemDetailsFactory(
             Errors = errors,
             TraceId = traceId
         };
-        SarafanEvents.ProblemEmitted(
-            logger ?? NullLogger<SarafanProblemDetailsFactory>.Instance,
-            details.Status.Value,
-            details.Type,
-            details.Code,
-            details.Instance,
-            traceId);
         return details;
     }
 
     public ObjectResult CreateResult(HttpContext context, int statusCode, string code)
-        => Result(Create(context, statusCode, code));
+        => OperationLogging.Run(_logger, $"{typeof(SarafanProblemDetailsFactory).FullName}.{nameof(CreateResult)}",
+            () => ProblemInputs(statusCode, code), () => Result(Create(context, statusCode, code)));
 
     public ObjectResult CreateValidationResult(HttpContext context, ModelStateDictionary modelState)
+        => OperationLogging.Run(_logger, $"{typeof(SarafanProblemDetailsFactory).FullName}.{nameof(CreateValidationResult)}",
+            () => "context/modelState=[redacted]", () => CreateValidationResultCore(context, modelState));
+
+    private ObjectResult CreateValidationResultCore(HttpContext context, ModelStateDictionary modelState)
     {
         var errors = modelState
             .Where(item => item.Value?.ValidationState == ModelValidationState.Invalid)
@@ -181,13 +191,17 @@ public sealed class SarafanProblemDetailsFactory(
             errors));
     }
 
-    public async ValueTask WriteAsync(
+    public ValueTask WriteAsync(
         HttpContext context,
         int statusCode,
         string code,
         CancellationToken cancellationToken = default)
+        => new(OperationLogging.RunAsync(_logger, $"{typeof(SarafanProblemDetailsFactory).FullName}.{nameof(WriteAsync)}",
+            () => ProblemInputs(statusCode, code), () => WriteCoreAsync(context, statusCode, code, cancellationToken), cancellationToken));
+
+    private async Task WriteCoreAsync(HttpContext context, int statusCode, string code, CancellationToken cancellationToken)
     {
-        var details = Create(context, statusCode, code);
+        var details = CreateCore(context, statusCode, code, null);
         context.Response.StatusCode = details.Status!.Value;
         context.Response.ContentType = MediaType;
         context.Response.Headers.ContentLanguage = "ru";
@@ -196,7 +210,17 @@ public sealed class SarafanProblemDetailsFactory(
             details,
             SerializerOptions,
             cancellationToken);
+        LogProblemEmitted(details);
     }
+
+    private void LogProblemEmitted(SarafanProblemDetails details)
+        => SarafanEvents.ProblemEmitted(
+            _logger,
+            details.Status!.Value,
+            details.Type!,
+            details.Code,
+            details.Instance!,
+            details.TraceId!);
 
     public static string CodeForStatus(int statusCode) => statusCode switch
     {
@@ -212,6 +236,9 @@ public sealed class SarafanProblemDetailsFactory(
         >= 500 and < 600 => "internal_error",
         _ => "internal_error"
     };
+
+    private static string ProblemInputs(int statusCode, string code)
+        => $"statusCode={statusCode}; code={(code is not null && Definitions.ContainsKey(code) ? code : "other")}; context/errors=[redacted]";
 
     private static ObjectResult Result(SarafanProblemDetails details)
     {

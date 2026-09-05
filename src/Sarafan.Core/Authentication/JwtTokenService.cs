@@ -11,17 +11,24 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 using Sarafan.Core.Models;
+using Sarafan.Core.Observability;
 
 namespace Sarafan.Core.Authentication;
 
 public sealed record AccessTokenResult(string Token, DateTimeOffset ExpiresAt);
 
-public sealed class JwtTokenService(IOptions<AuthenticationOptions> options, TimeProvider timeProvider)
+public sealed class JwtTokenService(
+    IOptions<AuthenticationOptions> options, TimeProvider timeProvider, ILogger<JwtTokenService> logger)
 {
     private readonly AuthenticationOptions _options = options.Value;
     private readonly SymmetricSecurityKey _signingKey = new(Encoding.UTF8.GetBytes(options.Value.SigningKey));
 
     public AccessTokenResult CreateAccessToken(Customer customer)
+        => OperationLogging.Run(logger, $"{typeof(JwtTokenService).FullName}.{nameof(CreateAccessToken)}",
+            () => LogValueSummary.Inputs((nameof(customer), customer)),
+            () => CreateAccessTokenCore(customer));
+
+    private AccessTokenResult CreateAccessTokenCore(Customer customer)
     {
         var now = timeProvider.GetUtcNow();
         var expiresAt = now.AddMinutes(_options.AccessTokenMinutes);

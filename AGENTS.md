@@ -45,7 +45,14 @@ This file is a part of the Sarafan application
 - Keep the text console record human-readable and single-line, with an RFC 3339 UTC timestamp, severity, event name, W3C trace/span identifiers when available, and a meaningful message. Structured fields supplement the message and must never replace it with JSON or a code-only body.
 - Propagate W3C Trace Context and correlate RFC 9457 `traceId` with `Activity.TraceId.ToHexString()` (32 lowercase hexadecimal characters). Do not use the complete `Activity.Id` as the public trace identifier.
 - Log HTTP operations by low-cardinality route template, method, status, and duration only. Never log raw paths, query strings, full URLs, request/response bodies, headers, SQL parameters, localized Problem Details text, or serialized problem documents.
-- Use an allowlist for log attributes. Never record credentials, tokens, cookies, verification codes, personal/customer data, free-form input, client IP addresses, exception messages, database connection strings, or other secrets. Unexpected exceptions are owned and recorded once by the centralized exception boundary.
+- Use an allowlist for log attributes. Never record credentials, tokens, cookies, verification codes, personal/customer data, free-form input, client IP addresses, exception messages, database connection strings, or other secrets.
+- Every controller entry point must log its inputs on entry and its outputs on exit at **Debug** level, including the status endpoint, early returns, and automatic action-validation responses. Register `ControllerLoggingFilter` globally so new actions inherit this policy. Requests rejected before the MVC action pipeline (for example, authorization failures) retain centralized HTTP/problem logging.
+- Apply the same **Debug** input/output and **Warning** unexpected-exception rules to every public instance entry point of application services, including authentication, token issuance, problem-details creation, and exception handling. Use `OperationLogging` with constructor-injected `ILogger<T>`; private implementation methods and static utility functions do not require separate boundary events.
+- Input/output logging means explicit safe summaries through `LogValueSummary`, never raw payload serialization or arbitrary `ToString()`. Include parameter names, allowlisted enum-like values, result kinds, HTTP status codes, and explicit redaction markers. Unknown types and strings are redacted by default. Extend the allowlist and its privacy tests together when adding an input/output shape.
+- At each controller/service boundary, log an unexpected exception at **Warning** with the operation's fully qualified method name and safe `error.type`; preserve the original exception and stack by rethrowing it. A propagating failure can have one Warning per boundary to identify the affected operations. The centralized exception handler emits a fallback Warning only when no boundary has reported it. Event 1400 (`sarafan.core.exception.unhandled`) uses Warning starting with version 0.0.6.
+- Starting with version 0.0.6, event 1400 describes only the exception reaching the centralized handler, with no problem code or claim that a response was produced. Preserve this warning even if the response has already started or writing fails. For direct problem-response writes, emit event 1300 only after serialization to the response stream succeeds, using the actual normalized problem status and code; keep result/model creation logging for MVC callers separate from direct-write completion.
+- Expected `ServiceException`/`BadHttpRequestException` rejections and cancellation accompanied by a cancelled operation/request token are not unexpected-exception Warnings. Log a Debug exit describing the failure/cancellation when no value was returned; do not manufacture a successful output. An unsolicited `OperationCanceledException` is unexpected.
+- Keep input/output summary construction behind the Debug-level check. Use catalogue events 1600/1601/1602 (`sarafan.core.operation.entered`/`exited`/`failed`), `code.function.name`, `sarafan.operation.inputs`/`outputs`, and `error.type`; retain current W3C trace correlation.
 - Keep framework Warning, Error, and Critical records visible, but pass them through the centralized privacy policy: emit a stable generic event and safe category only, and discard framework message state, attributes, and exceptions before console or OTLP output.
 - Keep OTLP export optional and driven by standard `OTEL_*` configuration. Exporter or collector failure must not affect API behavior, and a deployment must choose either OTLP delivery or stdout collection to avoid duplicate ingestion.
 - Add tests for every new event, severity, semantic attribute, trace-correlation path, redaction boundary, and filtering decision. New features must extend the stable catalogue rather than bypass the observability facility.
@@ -93,8 +100,8 @@ For other file types (XML, JSON, YAML, etc.), use the appropriate comment syntax
 
 ---
 
-**Version:** 1.3
+**Version:** 1.4
 
-**Last Updated:** 2026-09-03
+**Last Updated:** 2026-09-06
 
 **Maintained by:** Development Team

@@ -2,8 +2,6 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
-using Microsoft.Extensions.Logging;
-
 namespace Sarafan.Core.Observability;
 
 public static partial class SarafanEvents
@@ -17,36 +15,63 @@ public static partial class SarafanEvents
     public const string ProblemEmittedName = "sarafan.core.problem.emitted";
     public const string UnhandledExceptionName = "sarafan.core.exception.unhandled";
     public const string AuthenticationRejectedName = "sarafan.core.authentication.rejected";
+    public const string OperationEnteredName = "sarafan.core.operation.entered";
+    public const string OperationExitedName = "sarafan.core.operation.exited";
+    public const string OperationFailedName = "sarafan.core.operation.failed";
 
-    [LoggerMessage(
-        EventId = 1000,
-        EventName = ApplicationStartedName,
-        Level = LogLevel.Information,
-        Message = "Sarafan Core {Version} started in {EnvironmentName}.")]
+    public static void OperationEntered(ILogger logger, string operation, string inputs)
+    {
+        using var scope = logger.BeginScope(new KeyValuePair<string, object?>[]
+        {
+            new("code.function.name", operation),
+            new("sarafan.operation.inputs", inputs)
+        });
+        OperationEnteredMessage(logger, operation, inputs);
+    }
+
+    public static void OperationExited(ILogger logger, string operation, string outputs)
+    {
+        using var scope = logger.BeginScope(new KeyValuePair<string, object?>[]
+        {
+            new("code.function.name", operation),
+            new("sarafan.operation.outputs", outputs)
+        });
+        OperationExitedMessage(logger, operation, outputs);
+    }
+
+    public static void OperationFailed(ILogger logger, string operation, Exception exception)
+    {
+        var errorType = exception.GetType().FullName ?? exception.GetType().Name;
+        using var scope = logger.BeginScope(new KeyValuePair<string, object?>[]
+        {
+            new("code.function.name", operation),
+            new("error.type", errorType)
+        });
+        OperationFailedMessage(logger, operation, errorType);
+    }
+
+    [LoggerMessage(EventId = 1600, EventName = OperationEnteredName, Level = LogLevel.Debug, Message = "Entering {Operation}. Inputs: {Inputs}.")]
+    private static partial void OperationEnteredMessage(ILogger logger, string operation, string inputs);
+
+    [LoggerMessage(EventId = 1601, EventName = OperationExitedName, Level = LogLevel.Debug, Message = "Exiting {Operation}. Outputs: {Outputs}.")]
+    private static partial void OperationExitedMessage(ILogger logger, string operation, string outputs);
+
+    [LoggerMessage(EventId = 1602, EventName = OperationFailedName, Level = LogLevel.Warning, Message = "Unexpected exception in {Operation}. Exception type: {ErrorType}.")]
+    private static partial void OperationFailedMessage(ILogger logger, string operation, string errorType);
+
+    [LoggerMessage(EventId = 1000, EventName = ApplicationStartedName, Level = LogLevel.Information, Message = "Sarafan Core {Version} started in {EnvironmentName}.")]
     public static partial void ApplicationStarted(
         ILogger logger,
         string version,
         string environmentName);
 
-    [LoggerMessage(
-        EventId = 1001,
-        EventName = ApplicationStoppedName,
-        Level = LogLevel.Information,
-        Message = "Sarafan Core stopped.")]
+    [LoggerMessage(EventId = 1001, EventName = ApplicationStoppedName, Level = LogLevel.Information, Message = "Sarafan Core stopped.")]
     public static partial void ApplicationStopped(ILogger logger);
 
-    [LoggerMessage(
-        EventId = 1100,
-        EventName = MigrationStartedName,
-        Level = LogLevel.Information,
-        Message = "Database migration started.")]
+    [LoggerMessage(EventId = 1100, EventName = MigrationStartedName, Level = LogLevel.Information, Message = "Database migration started.")]
     public static partial void MigrationStarted(ILogger logger);
 
-    [LoggerMessage(
-        EventId = 1101,
-        EventName = MigrationCompletedName,
-        Level = LogLevel.Information,
-        Message = "Database migration completed.")]
+    [LoggerMessage(EventId = 1101, EventName = MigrationCompletedName, Level = LogLevel.Information, Message = "Database migration completed.")]
     public static partial void MigrationCompleted(ILogger logger);
 
     public static void MigrationFailed(ILogger logger, Exception exception)
@@ -118,10 +143,7 @@ public static partial class SarafanEvents
             statusCode);
     }
 
-    [LoggerMessage(
-        EventId = 1200,
-        EventName = RequestCompletedName,
-        Message = "HTTP {Method} {Route} completed with status {StatusCode} in {ElapsedMilliseconds:F1} ms.")]
+    [LoggerMessage(EventId = 1200, EventName = RequestCompletedName, Message = "HTTP {Method} {Route} completed with status {StatusCode} in {ElapsedMilliseconds:F1} ms.")]
     private static partial void RequestCompletedMessage(
         ILogger logger,
         LogLevel logLevel,
@@ -130,10 +152,7 @@ public static partial class SarafanEvents
         int statusCode,
         double elapsedMilliseconds);
 
-    [LoggerMessage(
-        EventId = 1300,
-        EventName = ProblemEmittedName,
-        Message = "Returned RFC 9457 problem {ProblemCode} with status {StatusCode}.")]
+    [LoggerMessage(EventId = 1300, EventName = ProblemEmittedName, Message = "Returned RFC 9457 problem {ProblemCode} with status {StatusCode}.")]
     private static partial void ProblemEmittedMessage(
         ILogger logger,
         LogLevel logLevel,
@@ -142,40 +161,25 @@ public static partial class SarafanEvents
 
     public static void UnhandledException(
         ILogger logger,
-        string problemCode,
         Exception exception)
     {
-        if (!logger.IsEnabled(LogLevel.Error))
+        if (!logger.IsEnabled(LogLevel.Warning))
         {
             return;
         }
 
         using var scope = ErrorTypeScope(logger, exception);
-        UnhandledExceptionMessage(logger, problemCode);
+        UnhandledExceptionMessage(logger);
     }
 
-    [LoggerMessage(
-        EventId = 1500,
-        EventName = AuthenticationRejectedName,
-        Level = LogLevel.Warning,
-        Message = "Authentication rejected an invalid bearer token.")]
+    [LoggerMessage(EventId = 1500, EventName = AuthenticationRejectedName, Level = LogLevel.Warning, Message = "Authentication rejected an invalid bearer token.")]
     public static partial void AuthenticationRejected(ILogger logger);
 
-    [LoggerMessage(
-        EventId = 1102,
-        EventName = MigrationFailedName,
-        Level = LogLevel.Error,
-        Message = "Database migration failed.")]
+    [LoggerMessage(EventId = 1102, EventName = MigrationFailedName, Level = LogLevel.Error, Message = "Database migration failed.")]
     private static partial void MigrationFailedMessage(ILogger logger);
 
-    [LoggerMessage(
-        EventId = 1400,
-        EventName = UnhandledExceptionName,
-        Level = LogLevel.Error,
-        Message = "An unhandled exception produced the RFC 9457 problem {ProblemCode}.")]
-    private static partial void UnhandledExceptionMessage(
-        ILogger logger,
-        string problemCode);
+    [LoggerMessage(EventId = 1400, EventName = UnhandledExceptionName, Level = LogLevel.Warning, Message = "An unhandled exception reached the centralized exception handler.")]
+    private static partial void UnhandledExceptionMessage(ILogger logger);
 
     private static IDisposable? ErrorTypeScope(ILogger logger, Exception exception)
         => logger.BeginScope(new KeyValuePair<string, object?>[]

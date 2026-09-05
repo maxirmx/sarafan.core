@@ -12,11 +12,21 @@ public sealed class SarafanExceptionHandler(
     SarafanProblemDetailsFactory problemDetailsFactory,
     ILogger<SarafanExceptionHandler> logger) : IExceptionHandler
 {
-    public async ValueTask<bool> TryHandleAsync(
+    public ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
+        => new(OperationLogging.RunAsync(logger, $"{typeof(SarafanExceptionHandler).FullName}.{nameof(TryHandleAsync)}",
+            () => LogValueSummary.Inputs((nameof(httpContext), httpContext), (nameof(exception), exception), (nameof(cancellationToken), cancellationToken)),
+            () => TryHandleCoreAsync(httpContext, exception, cancellationToken), cancellationToken));
+
+    private async Task<bool> TryHandleCoreAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        if (!OperationLogging.IsExpected(exception, cancellationToken) && !OperationLogging.WasReported(exception))
+        {
+            SarafanEvents.UnhandledException(logger, exception);
+        }
+
         if (httpContext.Response.HasStarted)
         {
             return false;
@@ -30,11 +40,6 @@ public sealed class SarafanExceptionHandler(
                 SarafanProblemDetailsFactory.CodeForStatus(badRequest.StatusCode)),
             _ => (StatusCodes.Status500InternalServerError, "internal_error")
         };
-
-        if (exception is not ServiceException and not BadHttpRequestException)
-        {
-            SarafanEvents.UnhandledException(logger, code, exception);
-        }
 
         await problemDetailsFactory.WriteAsync(httpContext, statusCode, code, cancellationToken);
         return true;
