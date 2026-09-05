@@ -40,7 +40,7 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connect
 builder.Services.AddSingleton<SarafanProblemDetailsFactory>();
 builder.Services.AddExceptionHandler<SarafanExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<ControllerLoggingFilter>(int.MinValue));
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.SuppressMapClientErrors = true;

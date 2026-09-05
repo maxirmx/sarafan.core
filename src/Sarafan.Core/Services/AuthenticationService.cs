@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Sarafan.Core.Authentication;
 using Sarafan.Core.Data;
 using Sarafan.Core.Models;
+using Sarafan.Core.Observability;
 using Sarafan.Core.RestModels;
 
 namespace Sarafan.Core.Services;
@@ -21,12 +22,35 @@ public sealed class AuthenticationService(
     VerificationAttemptStore attemptStore,
     JwtTokenService tokenService,
     IOptions<AuthenticationOptions> options,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<AuthenticationService> logger)
 {
     private static readonly TimeSpan AttemptWindow = TimeSpan.FromMinutes(15);
     private readonly AuthenticationOptions _options = options.Value;
 
-    public async Task RequestCodeAsync(
+    public Task RequestCodeAsync(RequestCodeRequest request, string remoteAddress, CancellationToken cancellationToken)
+        => OperationLogging.RunAsync(logger, $"{typeof(AuthenticationService).FullName}.{nameof(RequestCodeAsync)}",
+            () => LogValueSummary.Inputs((nameof(request), request), (nameof(remoteAddress), remoteAddress), (nameof(cancellationToken), cancellationToken)),
+            () => RequestCodeCoreAsync(request, remoteAddress, cancellationToken), cancellationToken);
+
+    public Task<AuthenticationSession> VerifyCodeAsync(
+        VerifyCodeRequest request, string remoteAddress, string? userAgent, CancellationToken cancellationToken)
+        => OperationLogging.RunAsync(logger, $"{typeof(AuthenticationService).FullName}.{nameof(VerifyCodeAsync)}",
+            () => LogValueSummary.Inputs((nameof(request), request), (nameof(remoteAddress), remoteAddress), (nameof(userAgent), userAgent), (nameof(cancellationToken), cancellationToken)),
+            () => VerifyCodeCoreAsync(request, remoteAddress, userAgent, cancellationToken), cancellationToken);
+
+    public Task<AuthenticationSession> RefreshAsync(
+        string rawToken, string remoteAddress, string? userAgent, CancellationToken cancellationToken)
+        => OperationLogging.RunAsync(logger, $"{typeof(AuthenticationService).FullName}.{nameof(RefreshAsync)}",
+            () => LogValueSummary.Inputs((nameof(rawToken), rawToken), (nameof(remoteAddress), remoteAddress), (nameof(userAgent), userAgent), (nameof(cancellationToken), cancellationToken)),
+            () => RefreshCoreAsync(rawToken, remoteAddress, userAgent, cancellationToken), cancellationToken);
+
+    public Task LogoutAsync(string? rawToken, CancellationToken cancellationToken)
+        => OperationLogging.RunAsync(logger, $"{typeof(AuthenticationService).FullName}.{nameof(LogoutAsync)}",
+            () => LogValueSummary.Inputs((nameof(rawToken), rawToken), (nameof(cancellationToken), cancellationToken)),
+            () => LogoutCoreAsync(rawToken, cancellationToken), cancellationToken);
+
+    private async Task RequestCodeCoreAsync(
         RequestCodeRequest request,
         string remoteAddress,
         CancellationToken cancellationToken)
@@ -39,7 +63,7 @@ public sealed class AuthenticationService(
         await codeProvider.RequestCodeAsync(phone, cancellationToken);
     }
 
-    public async Task<AuthenticationSession> VerifyCodeAsync(
+    private async Task<AuthenticationSession> VerifyCodeCoreAsync(
         VerifyCodeRequest request,
         string remoteAddress,
         string? userAgent,
@@ -62,7 +86,7 @@ public sealed class AuthenticationService(
             : await LoginAsync(phone, remoteAddress, userAgent, cancellationToken);
     }
 
-    public async Task<AuthenticationSession> RefreshAsync(
+    private async Task<AuthenticationSession> RefreshCoreAsync(
         string rawToken,
         string remoteAddress,
         string? userAgent,
@@ -127,7 +151,7 @@ public sealed class AuthenticationService(
         return CreateSession(current.Customer, hasPhoto, nextRawToken);
     }
 
-    public async Task LogoutAsync(string? rawToken, CancellationToken cancellationToken)
+    private async Task LogoutCoreAsync(string? rawToken, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(rawToken))
         {

@@ -76,7 +76,9 @@ ASP.NET Core accepts and propagates the W3C `traceparent` header. RFC 9457 respo
 
 OTLP log and trace export is disabled unless `OTEL_LOGS_EXPORTER=otlp` or `OTEL_TRACES_EXPORTER=otlp` is configured (an `OTEL_EXPORTER_OTLP_ENDPOINT` also enables the corresponding exporters when their selectors are absent). Standard `OTEL_EXPORTER_OTLP_*` variables configure protocol, endpoint, headers, timeout, and batching. Export failure is isolated from request handling.
 
-Do not enable both OTLP export and infrastructure collection of stdout into the same backend: choose one delivery path to avoid duplicate records. Set the signal exporter to `none` when stdout is collected. Detailed Debug events remain disabled in Production by the normal `Logging:LogLevel` configuration.
+Do not enable both OTLP export and infrastructure collection of stdout into the same backend: choose one delivery path to avoid duplicate records. Set the signal exporter to `none` when stdout is collected. The default `Logging:LogLevel:Sarafan` is `Debug`; set `Logging__LogLevel__Sarafan=Information` in deployments that should suppress detailed entry/exit events.
+
+Controller entry points and application services log safe input/output summaries at Debug, with redaction markers for customer data and secrets. Unexpected failures are recorded at Warning with the operation name and exception type, while expected rejections and requested cancellation get a Debug exit. See the logging policy in `AGENTS.md` for event identifiers, exception ownership, and allowlisted fields.
 
 Logs intentionally exclude raw URLs and query strings, HTTP headers and bodies, tokens/cookies/codes, personal data, localized Problem Details text, connection strings, SQL values, and client IP addresses. New events must use the stable catalogue and allowlisted low-cardinality attributes described in `AGENTS.md`.
 
