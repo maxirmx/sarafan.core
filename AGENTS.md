@@ -6,6 +6,14 @@ This file is a part of the Sarafan application
 
 # Agent Guidelines for Sarafan Project
 
+## Specification and repository guidance
+
+- Follow the current specification identified in the [specification README](https://github.com/sara-fan/sarafan.spec#source-of-truth). If an implementation issue conflicts with it, flag the discrepancy before implementing the affected behavior.
+- In implementation PR descriptions, cite the governing specification version and section, and link the planning issue. Use any suitable format; the PR template is optional.
+- When a change introduces or changes a lasting convention, API contract, domain invariant, security/privacy rule, workflow, or test pattern, update the nearest relevant `AGENTS.md` in the same PR. Keep entries concise and reusable.
+- Otherwise, include `AGENTS.md: no durable change` in the PR description.
+- Before editing documentation, read its current revision and preserve user-authored changes. Keep product requirements in the specification and task-specific discussion in the issue.
+
 ## Code Standards and Requirements
 
 ### Controller Error Responses
